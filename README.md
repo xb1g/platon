@@ -21,6 +21,27 @@ This repository is intentionally scaffolded through **Task 1 only**. It provides
 2. Run `pnpm install`
 3. Run `pnpm check:workspace`
 
+## Local Boot Sequence
+
+1. Ensure infra services are running: `docker compose up -d`
+2. Start the workspace (API, MCP server, worker, UI) via `pnpm dev`
+3. Exercise core flows: session ingestion, reflection job, retrieval request
+4. Refer to `docs/runbooks/deploy.md` for troubleshooting and orchestration tips.
+
+## Environment Variables
+
+Environment configuration is centralized in `.env.example`. Populate the following before running the platform:
+
+| Variable | Description |
+| --- | --- |
+| `DATABASE_URL` | Postgres connection string with pgvector enabled |
+| `NEO4J_URI`, `NEO4J_USER`, `NEO4J_PASSWORD` | Graph metadata store credentials |
+| `REDIS_URL` | BullMQ queue connection |
+| `MCP_SERVER_HOST`, `MCP_SERVER_PORT` | Host and port for the MCP bridge |
+| `NEVERMINED_RPC_URL`, `NEVERMINED_WALLET_PRIVATE_KEY` | Nevermined metering RPC and key |
+
+Refer to `docs/runbooks/nevermined-setup.md` for provider-specific onboarding before using metered endpoints.
+
 ## Tooling
 
 - `pnpm` workspaces for package management

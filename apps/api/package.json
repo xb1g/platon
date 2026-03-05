@@ -4,10 +4,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "node -e \"console.log('Scaffold only: implement Task 3 for @memory/api')\"",
-    "build": "node -e \"console.log('Scaffold only: implement Task 3 for @memory/api')\"",
-    "test": "node -e \"console.log('Scaffold only: implement Task 3 for @memory/api')\"",
-    "typecheck": "node -e \"console.log('Scaffold only: implement Task 3 for @memory/api')\""
+    "dev": "tsx src/server.ts",
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
     "@fastify/cors": "^10.0.1",
