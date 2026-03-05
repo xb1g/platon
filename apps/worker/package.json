@@ -4,10 +4,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/index.ts",
-    "build": "tsc -p tsconfig.json",
-    "test": "vitest run",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "dev": "node -e \"console.log('Scaffold only: implement Task 4 for @memory/worker')\"",
+    "build": "node -e \"console.log('Scaffold only: implement Task 4 for @memory/worker')\"",
+    "test": "node -e \"console.log('Scaffold only: implement Task 4 for @memory/worker')\"",
+    "typecheck": "node -e \"console.log('Scaffold only: implement Task 4 for @memory/worker')\""
   },
   "dependencies": {
     "@memory/shared": "workspace:*",

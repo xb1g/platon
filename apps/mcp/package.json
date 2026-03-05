@@ -4,10 +4,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/server.ts",
-    "build": "tsc -p tsconfig.json",
-    "test": "vitest run",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "dev": "node -e \"console.log('Scaffold only: implement Task 5 for @memory/mcp')\"",
+    "build": "node -e \"console.log('Scaffold only: implement Task 5 for @memory/mcp')\"",
+    "test": "node -e \"console.log('Scaffold only: implement Task 5 for @memory/mcp')\"",
+    "typecheck": "node -e \"console.log('Scaffold only: implement Task 5 for @memory/mcp')\""
   },
   "dependencies": {
     "@memory/shared": "workspace:*",

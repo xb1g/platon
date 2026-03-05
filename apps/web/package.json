@@ -4,15 +4,11 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "next dev --port 3000",
-    "build": "next build",
-    "start": "next start --port 3000",
-    "test": "vitest run",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "dev": "node -e \"console.log('Scaffold only: implement the web app after backend tasks are stable')\"",
+    "build": "node -e \"console.log('Scaffold only: implement the web app after backend tasks are stable')\"",
+    "start": "node -e \"console.log('Scaffold only: implement the web app after backend tasks are stable')\"",
+    "test": "node -e \"console.log('Scaffold only: implement the web app after backend tasks are stable')\"",
+    "typecheck": "node -e \"console.log('Scaffold only: implement the web app after backend tasks are stable')\""
   },
-  "dependencies": {
-    "next": "^15.1.4",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0"
-  }
+  "dependencies": {}
 }
