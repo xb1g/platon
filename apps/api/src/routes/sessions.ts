@@ -1,11 +1,11 @@
 import { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
-import { sessionSchema } from '@memory/shared';
+import { sessionPayloadSchema } from '@memory/shared';
 
 export const sessionRoutes: FastifyPluginAsync = async (server) => {
   server.post('/', async (request, reply) => {
     try {
-      const data = sessionSchema.parse(request.body);
+      const data = sessionPayloadSchema.parse(request.body);
       // TODO: Save to Postgres and enqueue job
       // Use request.tenantId for tenant isolation
       return reply.status(201).send({ id: 'mock-id', status: 'queued', tenantId: request.tenantId });
