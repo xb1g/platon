@@ -9,15 +9,20 @@
     "test": "vitest run",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
+  "devDependencies": {
+    "@types/pg": "^8.15.5"
+  },
   "dependencies": {
+    "@memory/shared": "workspace:*",
+    "@nevermined-io/payments": "1.0.0-rc14",
     "@fastify/cors": "^10.0.1",
     "bullmq": "^5.34.10",
     "dotenv": "^16.4.7",
     "fastify": "^5.2.1",
+    "fastify-plugin": "^5.0.1",
     "ioredis": "^5.4.2",
     "neo4j-driver": "^5.27.0",
     "pg": "^8.13.1",
-    "zod": "^3.24.1",
-    "@memory/shared": "workspace:*"
+    "zod": "^3.24.1"
   }
 }
