@@ -13,6 +13,9 @@
     "allowJs": true,
     "incremental": true,
     "isolatedModules": true,
+    "paths": {
+      "@/*": ["./*"]
+    },
     "plugins": [
       {
         "name": "next"
@@ -21,6 +24,8 @@
   },
   "include": [
     "app",
+    "components",
+    "lib",
     "next-env.d.ts",
     ".next/types/**/*.ts"
   ],
