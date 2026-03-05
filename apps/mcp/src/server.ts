@@ -62,6 +62,12 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
 });
 
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
+  // Mock Nevermined check
+  const hasCredits = true;
+  if (!hasCredits) {
+    throw new Error("Payment Required");
+  }
+
   switch (request.params.name) {
     case "memory.dump_session":
       return await dumpSession(request.params.arguments);

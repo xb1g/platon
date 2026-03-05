@@ -7,7 +7,8 @@ export const sessionRoutes: FastifyPluginAsync = async (server) => {
     try {
       const data = sessionSchema.parse(request.body);
       // TODO: Save to Postgres and enqueue job
-      return reply.status(201).send({ id: 'mock-id', status: 'queued' });
+      // Use request.tenantId for tenant isolation
+      return reply.status(201).send({ id: 'mock-id', status: 'queued', tenantId: request.tenantId });
     } catch (error) {
       if (error instanceof z.ZodError) {
         return reply.status(400).send({ error: 'Invalid payload', details: error.errors });

@@ -9,10 +9,11 @@ export const retrieveRoutes: FastifyPluginAsync = async (server) => {
   server.post('/', async (request, reply) => {
     try {
       const data = retrievalRequestSchema.parse(request.body);
+      // Use request.tenantId for tenant isolation
       const graphResults = await graphSearch(data.query);
       const vectorResults = await vectorSearch(data.query);
       const rankedResults = rankResults(graphResults, vectorResults);
-      return reply.status(200).send({ results: rankedResults });
+      return reply.status(200).send({ results: rankedResults, tenantId: request.tenantId });
     } catch (error) {
       if (error instanceof z.ZodError) {
         return reply.status(400).send({ error: 'Invalid payload', details: error.errors });
