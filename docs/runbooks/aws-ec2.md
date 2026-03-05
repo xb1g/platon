@@ -24,11 +24,38 @@ SSH into your new instance:
 ssh -i /path/to/your-key.pem ubuntu@<your-ec2-public-ip>
 ```
 
-Clone your repository (you may need to set up deploy keys or use HTTPS with a PAT):
-```bash
-git clone https://github.com/your-org/agent-memory-platform.git
-cd agent-memory-platform
-```
+### Link the repo to GitHub
+
+The EC2 server needs access to your GitHub repo. Choose one:
+
+**Option A: SSH deploy key (recommended)**
+
+1. On the EC2 server, generate a key:
+   ```bash
+   ssh-keygen -t ed25519 -C "ec2-deploy" -f ~/.ssh/github_deploy -N ""
+   cat ~/.ssh/github_deploy.pub
+   ```
+
+2. In GitHub: repo → **Settings** → **Deploy keys** → **Add deploy key**. Paste the public key. Enable "Allow write access" only if you need to push from EC2.
+
+3. Clone the repo:
+   ```bash
+   ./scripts/setup-ec2-git.sh
+   ```
+   Or manually: `git clone git@github.com:xb1g/platon.git ~/platon`
+
+**Option B: HTTPS with Personal Access Token**
+
+1. Create a [GitHub PAT](https://github.com/settings/tokens) with `repo` scope.
+
+2. Clone using the token:
+   ```bash
+   git clone https://<YOUR_PAT>@github.com/xb1g/platon.git ~/platon
+   ```
+   Or set `REPO_URL` and run the script:
+   ```bash
+   REPO_URL="https://<YOUR_PAT>@github.com/xb1g/platon.git" ./scripts/setup-ec2-git.sh
+   ```
 
 Run the setup script to install Docker, Node.js, pnpm, and PM2:
 ```bash
@@ -47,9 +74,35 @@ nano .env
 
 ## 4. Deploy
 
+### Initial deploy (on EC2)
+
 Run the deployment script to start the databases via Docker and the apps via PM2:
 ```bash
 ./scripts/deploy-local.sh
+```
+
+### Update from your local machine
+
+To pull latest code and redeploy without SSHing in manually:
+
+1. Copy `scripts/.env.deploy.example` to `scripts/.env.deploy` and set:
+   - `EC2_HOST` – e.g. `ubuntu@1.2.3.4`
+   - `EC2_KEY` – path to your `.pem` key
+   - `EC2_REPO_PATH` – path to the repo on EC2 (default: `~/platon`)
+
+2. Run:
+```bash
+./scripts/deploy-ec2.sh
+```
+
+Or with env vars inline:
+```bash
+EC2_HOST=ubuntu@1.2.3.4 EC2_KEY=~/.ssh/my-key.pem ./scripts/deploy-ec2.sh
+```
+
+Use `--pull-only` to only pull code without redeploying:
+```bash
+./scripts/deploy-ec2.sh --pull-only
 ```
 
 ## 5. (Optional) Setup Nginx Reverse Proxy
