@@ -18,11 +18,11 @@ pm2 stop all || true
 pm2 delete all || true
 
 # Start API
-pm2 start pnpm --name "memory-api" --filter @memory/api start
+pm2 start pnpm --name "memory-api" -- --filter @memory/api start
 # Start Worker
-pm2 start pnpm --name "memory-worker" --filter @memory/worker start
+pm2 start pnpm --name "memory-worker" -- --filter @memory/worker start
 # Start Web Dashboard
-pm2 start pnpm --name "memory-web" --filter @memory/web start
+pm2 start pnpm --name "memory-web" -- --filter @memory/web start
 
 pm2 save
 pm2 startup | grep "sudo" | bash || true
