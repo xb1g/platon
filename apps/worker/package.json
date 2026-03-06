@@ -7,11 +7,9 @@
     "dev": "tsx src/index.ts",
     "build": "tsc -p tsconfig.json",
     "test": "vitest run",
+    "test:reflection": "vitest run -- llm-reflection.test.ts reflect-session.test.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "start": "node dist/src/index.js"
-  },
-  "devDependencies": {
-    "@types/pg": "^8.15.5"
   },
   "dependencies": {
     "@memory/shared": "workspace:*",

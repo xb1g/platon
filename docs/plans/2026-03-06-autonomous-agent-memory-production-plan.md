@@ -92,7 +92,7 @@ The executor must respect this order:
 ## Task Ledger
 
 - [x] Task 1: Add live end-to-end smoke infrastructure
-- [ ] Task 2: Replace heuristic reflection with model-backed structured reflection
+- [x] Task 2: Replace heuristic reflection with model-backed structured reflection
 - [ ] Task 3: Enrich the shared contracts for memory provenance and governance
 - [ ] Task 4: Persist richer graph entities and provenance
 - [ ] Task 5: Installation, Delivery, and Execution Masterplan
@@ -188,7 +188,7 @@ Execution note (2026-03-06T17:09:30Z):
 - Verification: `pnpm --filter @memory/api typecheck` (pass), `pnpm --filter @memory/api test:e2e:smoke` (pass on `main`)
 - Merge: Task 1 changes reconciled into `main` carefully by staging only Task 1 files; unrelated local edits left untouched
 
-### [ ] Task 2: Replace heuristic reflection with model-backed structured reflection
+### [x] Task 2: Replace heuristic reflection with model-backed structured reflection
 
 **Files:**
 - Modify: `apps/worker/src/lib/llm.ts`
@@ -231,6 +231,13 @@ Expected: PASS with deterministic mocks for model responses and failure paths.
 git add apps/worker/src/lib/llm.ts apps/worker/src/lib/reflection-prompt.ts apps/worker/src/lib/reflection-schema.ts apps/worker/tests/llm-reflection.test.ts apps/worker/package.json .env.example
 git commit -m "feat: add model-backed structured reflection"
 ```
+
+Execution note (2026-03-06T17:16:00Z):
+- Branch: `codex/task-02-structured-reflection`
+- Worktree: `/Users/bunyasit/dev/platon/.worktrees/codex-task-02-structured-reflection`
+- Commit: `pending`
+- Verification: `pnpm --filter @memory/worker test -- llm-reflection.test.ts reflect-session.test.ts` (pass), `pnpm --filter @memory/worker typecheck` (pass)
+- Merge: pending into `main`
 
 ### [ ] Task 3: Enrich the shared contracts for memory provenance and governance
 
