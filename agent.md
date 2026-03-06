@@ -46,7 +46,7 @@ After completing a task (or failing), dump your execution logs for async reflect
 
 **Payload fields:** `sessionId`, `agentId`, `agentKind`, `task`, `outcome`, `tools`, `events`, `artifacts`, `errors`. Optional: `humanFeedback`, `inputContextSummary`.
 
-**HTTP and MCP are co-equal interfaces** — use the REST API or MCP tool with the same structured payload. Claude Hooks are an optional adapter; the core architecture is provider-neutral.
+**HTTP and MCP are co-equal interfaces** — use the REST API or MCP tool with the same structured payload. Claude Hooks are an optional adapter; see `apps/mcp/examples/claude-hooks/README.md` for setup. The core architecture is provider-neutral.
 
 ## Metadata & Metering
 
