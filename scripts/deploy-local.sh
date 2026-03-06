@@ -3,6 +3,13 @@
 
 set -e
 
+# Export repo-root environment so package-level starts inherit deployment secrets.
+if [[ -f ".env" ]]; then
+  set -a
+  source .env
+  set +a
+fi
+
 echo "Starting infrastructure (Postgres, Neo4j, Redis)..."
 docker compose up -d
 
