@@ -2,15 +2,22 @@
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
-**Goal:** Turn Platon into a production-grade autonomous agent memory system that proves overnight memory-driven improvement with rigorous evals, governance, delivery automation, and reliability checks.
+**Goal:** Turn Platon into a working agent memory system as quickly as possible, with governed retrieval, benchmark coverage, and a smoke-verified deployment path.
 
-**Architecture:** Extend the existing API, worker, graph, MCP, and web surfaces with five capabilities: real reflection, governed memory publication, hybrid retrieval, operator-grade installation surfaces, and an autonomous execution loop that can work through this plan in isolated worktrees, merge verified work, and keep plan state current.
+**Architecture:** Extend the existing API, worker, graph, MCP, and web surfaces with the minimum capabilities needed for a usable release: real reflection, governed memory publication, hybrid retrieval, installation surfaces, and a direct deploy-and-smoke workflow. Unattended overnight automation and heavier operational hardening are explicitly deferred until after the first working release is in use.
 
 **Tech Stack:** TypeScript, Fastify, BullMQ, Redis, Postgres, Neo4j, Vitest, MCP, Nevermined x402, Next.js, tsx, turbo, git worktrees
 
 ---
 
 ## Automation Contract
+
+Scope adjustment (2026-03-06):
+
+- Prioritize "working ASAP" over unattended autonomy.
+- Treat Tasks 9, 10, 12, and 14 as deferred follow-up work, not release blockers.
+- Keep Tasks 6, 11, and 13 as the shortest path to a usable and safe deployment.
+- Do not add overnight-only infrastructure unless it is required by an already-shipping path.
 
 This plan is written for a cron-driven execution agent. The agent must treat the plan itself as the source of truth for progress.
 
@@ -74,7 +81,7 @@ Execution note:
 
 - Tasks 1 through 12 should merge locally into the primary branch after success.
 - Only Task 13 may push and deploy.
-- Task 13 may proceed only when Tasks 1 through 12 are `[x]`.
+- Task 13 may proceed once Tasks 6, 7, 8, and 11 are `[x]`.
 - After deploy, the executor must run post-deploy smoke checks before marking Task 13 complete.
 
 ## Dependency Order
@@ -85,9 +92,8 @@ The executor must respect this order:
 - Tasks 2, 3, and 4 before Task 6
 - Task 5 after Tasks 1 through 4, because it is the product and delivery masterplan
 - Task 6 before Tasks 7 and 8
-- Task 8 before Tasks 9 and 10
-- Tasks 9 through 12 before Task 13
-- Task 13 before Task 14
+- Tasks 6, 7, 8, and 11 before Task 13
+- Tasks 9, 10, 12, and 14 are deferred until after the first working deployment
 
 ## Task Ledger
 
@@ -99,12 +105,12 @@ The executor must respect this order:
 - [ ] Task 6: Implement vector indexing, hybrid retrieval, and memory governance
 - [x] Task 7: Build retrieval explanations and usefulness feedback loops
 - [x] Task 8: Create benchmark tasks and an eval harness
-- [ ] Task 9: Build the overnight orchestration scripts
-- [ ] Task 10: Add metrics, traces, dashboards, and alert thresholds
+- [ ] Task 9: Deferred after first release: Build the overnight orchestration scripts
+- [ ] Task 10: Deferred after first release: Add metrics, traces, dashboards, and alert thresholds
 - [ ] Task 11: Harden auth, namespace safety, and poisoning defenses
-- [ ] Task 12: Add replay, dead-letter, and recovery tooling
-- [ ] Task 13: Push, deploy, post-deploy smoke, and release gates
-- [ ] Task 14: Validate production readiness with load, failure injection, and unattended runs
+- [ ] Task 12: Deferred after first release: Add replay, dead-letter, and recovery tooling
+- [ ] Task 13: Push, deploy, and post-deploy smoke
+- [ ] Task 14: Deferred after first release: Validate production readiness with load, failure injection, and unattended runs
 
 ---
 
@@ -622,7 +628,9 @@ Execution note (2026-03-06T18:52:50Z):
 - Verification: `pnpm --filter @memory/shared build` (pass), `pnpm --filter @memory/shared test` (pass), `pnpm --filter @memory/api build` (pass), `pnpm --filter @memory/api test -- run-benchmark.test.ts` (pass; Vitest executed the full API suite with `tests/evals/run-benchmark.test.ts` passing)
 - Merge: Task 8 implementation already present on `main`; plan ledger reconciled with the completed task section
 
-### [ ] Task 9: Build the overnight orchestration scripts
+### [ ] Task 9: Deferred after first release: Build the overnight orchestration scripts
+
+This task is explicitly deferred. It is not required for the first working release.
 
 **Files:**
 - Create: `scripts/overnight/run-all.ts`
@@ -669,7 +677,9 @@ git add scripts/overnight/run-all.ts scripts/overnight/run-smoke.ts scripts/over
 git commit -m "feat: add overnight automation runner"
 ```
 
-### [ ] Task 10: Add metrics, traces, dashboards, and alert thresholds
+### [ ] Task 10: Deferred after first release: Add metrics, traces, dashboards, and alert thresholds
+
+This task is explicitly deferred. It is not required for the first working release.
 
 **Files:**
 - Create: `apps/api/src/lib/metrics.ts`
@@ -758,7 +768,9 @@ git add apps/api/src/lib/verified-auth.ts apps/api/src/routes/sessions.ts apps/a
 git commit -m "feat: harden memory safety and namespace security"
 ```
 
-### [ ] Task 12: Add replay, dead-letter, and recovery tooling
+### [ ] Task 12: Deferred after first release: Add replay, dead-letter, and recovery tooling
+
+This task is explicitly deferred. It is not required for the first working release.
 
 **Files:**
 - Create: `apps/worker/src/jobs/replay-reflection.ts`
@@ -800,40 +812,23 @@ git add apps/worker/src/jobs/replay-reflection.ts apps/api/src/routes/admin/repl
 git commit -m "feat: add replay and recovery tooling"
 ```
 
-### [ ] Task 13: Push, deploy, post-deploy smoke, and release gates
+### [ ] Task 13: Push, deploy, and post-deploy smoke
 
-This is the only task allowed to push and deploy automatically.
+This is the only task allowed to push and deploy automatically. For the first release, keep this task narrow: deploy the current system and prove that the shipped path works end-to-end. Do not add overnight gates here.
 
 **Files:**
-- Create: `scripts/overnight/assert-gates.ts`
-- Create: `scripts/overnight/write-report.ts`
-- Create: `docs/runbooks/release-gates.md`
-- Modify: `package.json`
-- Create: `apps/api/tests/gates.test.ts`
 - Modify: `docs/runbooks/deploy.md`
-- Test: `apps/api/tests/gates.test.ts`
+- Test: `apps/api/tests/e2e/session-retrieval.e2e.test.ts`
 
-**Step 1: Write failing gate tests**
+**Step 1: Write the deploy smoke checklist**
 
-```ts
-it("fails when benchmark lift is below threshold");
-it("fails when harmful retrieval exceeds threshold");
-it("passes only when smoke, quality, integrity, and reliability checks pass");
+```md
+- document exact push and deploy commands
+- document required env vars
+- document the post-deploy smoke command and rollback trigger
 ```
 
-**Step 2: Run test to verify it fails**
-
-Run: `pnpm --filter @memory/api test -- gates.test.ts`
-Expected: FAIL because the gate evaluator and report writer do not exist.
-
-**Step 3: Implement release gates and nightly report generation**
-
-```ts
-assertGate("benchmark_lift", metrics.lift >= 0.1);
-assertGate("harmful_retrieval_rate", metrics.harmfulRate < 0.02);
-```
-
-**Step 4: Push and deploy to staging**
+**Step 2: Push and deploy to staging**
 
 Run:
 
@@ -848,19 +843,21 @@ Expected:
 - deployment command succeeds
 - services restart cleanly
 
-**Step 5: Run post-deploy smoke and gate checks**
+**Step 3: Run post-deploy smoke and benchmark checks**
 
-Run: `pnpm --filter @memory/api test -- gates.test.ts && pnpm tsx scripts/overnight/run-all.ts && pnpm tsx scripts/overnight/assert-gates.ts`
-Expected: PASS with a machine-readable nightly report artifact and successful post-deploy smoke.
+Run: `pnpm --filter @memory/api test:e2e:smoke && pnpm --filter @memory/api test -- run-benchmark.test.ts`
+Expected: PASS with successful post-deploy smoke and benchmark harness still green.
 
-**Step 6: Commit**
+**Step 4: Commit**
 
 ```bash
-git add scripts/overnight/assert-gates.ts scripts/overnight/write-report.ts docs/runbooks/release-gates.md package.json apps/api/tests/gates.test.ts docs/runbooks/deploy.md
-git commit -m "feat: add release gates and deployment flow"
+git add docs/runbooks/deploy.md
+git commit -m "docs: simplify release flow to deploy plus smoke"
 ```
 
-### [ ] Task 14: Validate production readiness with load, failure injection, and unattended runs
+### [ ] Task 14: Deferred after first release: Validate production readiness with load, failure injection, and unattended runs
+
+This task is explicitly deferred. It is not required for the first working release.
 
 **Files:**
 - Create: `scripts/overnight/failure-injection.ts`
@@ -917,27 +914,23 @@ Run these only after all tasks above are complete:
 7. `pnpm --filter @memory/web test`
 8. `pnpm --filter @memory/web typecheck`
 9. `pnpm --filter @memory/api test -- session-retrieval.e2e.test.ts`
-10. `pnpm tsx scripts/overnight/run-all.ts`
-11. `pnpm tsx scripts/overnight/assert-gates.ts`
+10. `pnpm --filter @memory/api test -- run-benchmark.test.ts`
 
 Expected final state:
 
 - all package tests pass
 - live smoke passes against real infra
 - hosted `agent-installation.md` is reachable
-- overnight report is generated
-- release gates pass
-- benchmark lift is above the agreed threshold
-- harmful retrieval remains below the agreed threshold
+- benchmark harness passes
+- hybrid retrieval works for the shipped path
+- harmful retrieval remains below the agreed threshold in the benchmark harness
 
 ## Rollout Notes
 
 - Start with internal benchmark traffic only.
 - Enable publishing with suppression defaults biased toward safety.
-- Promote to canary tenants after one week of unattended overnight success.
 - Allow the cron executor to merge successful tasks continuously, but reserve push and deploy for Task 13.
-- Block broader rollout until game-day failure injection is clean.
-- Do not market "agents learn overnight" until benchmark lift and overnight reliability are both stable.
+- Defer overnight claims, unattended runs, and game-day requirements until the deferred tasks are complete.
 
 Plan complete and saved to `docs/plans/2026-03-06-autonomous-agent-memory-production-plan.md`. Two execution options:
 
