@@ -365,4 +365,49 @@ describe("Retrieve API", () => {
 
     await app.close();
   });
+
+  it("passes retrieval filters into both graph and vector search", async () => {
+    const { app } = await buildPaidServer();
+    const { graphSearch } = await import("../src/lib/retrieval/graph-search.js");
+    const { vectorSearch } = await import("../src/lib/retrieval/vector-search.js");
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/retrieve",
+      headers: {
+        "payment-signature": "token-123"
+      },
+      payload: {
+        agentId: "agent-runtime",
+        agentKind: "support-agent",
+        query: "postgres lock timeout",
+        filters: {
+          statuses: ["failed"],
+          toolNames: ["psql"]
+        }
+      }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(graphSearch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        filters: {
+          statuses: ["failed"],
+          toolNames: ["psql"]
+        }
+      }),
+      expect.any(Object)
+    );
+    expect(vectorSearch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        filters: {
+          statuses: ["failed"],
+          toolNames: ["psql"]
+        }
+      }),
+      expect.any(Object)
+    );
+
+    await app.close();
+  });
 });

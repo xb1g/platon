@@ -1,4 +1,4 @@
-import type { RetrievalResult } from '@memory/shared';
+import type { RetrievalFilters, RetrievalResult } from '@memory/shared';
 import { createHash } from 'node:crypto';
 import type { QueryResultRow } from 'pg';
 import { query } from '../postgres.js';
@@ -6,6 +6,8 @@ import { embedText } from './embed.js';
 
 export type VectorStoreCandidate = RetrievalResult & {
   namespaceId: string;
+  retrievalStatus?: string;
+  toolNames?: string[];
 };
 
 export type VectorStoreHit = VectorStoreCandidate & {
@@ -21,6 +23,8 @@ type VectorStoreRow = QueryResultRow & {
   confidence: number;
   quality_score: number | null;
   status: string;
+  retrieval_status: string | null;
+  tool_names: unknown;
   source_provenance: unknown;
   content_hash: string | null;
   embedding_json: unknown;
@@ -35,6 +39,7 @@ type VectorStoreSearchArgs = {
   namespaceId: string;
   embedding: number[];
   limit: number;
+  filters?: RetrievalFilters;
 };
 
 type VectorStoreDeps = {
@@ -56,6 +61,8 @@ const ensureVectorTableSql = `
     confidence DOUBLE PRECISION NOT NULL,
     quality_score DOUBLE PRECISION,
     status TEXT NOT NULL,
+    retrieval_status TEXT,
+    tool_names JSONB NOT NULL DEFAULT '[]'::jsonb,
     source_provenance JSONB NOT NULL DEFAULT '[]'::jsonb,
     content_hash TEXT,
     embedding_json JSONB NOT NULL,
@@ -65,8 +72,17 @@ const ensureVectorTableSql = `
   ALTER TABLE memory_vectors
     ADD COLUMN IF NOT EXISTS content_hash TEXT;
 
+  ALTER TABLE memory_vectors
+    ADD COLUMN IF NOT EXISTS retrieval_status TEXT;
+
+  ALTER TABLE memory_vectors
+    ADD COLUMN IF NOT EXISTS tool_names JSONB NOT NULL DEFAULT '[]'::jsonb;
+
   CREATE INDEX IF NOT EXISTS memory_vectors_namespace_status_idx
     ON memory_vectors (namespace_id, status);
+
+  CREATE INDEX IF NOT EXISTS memory_vectors_namespace_retrieval_status_idx
+    ON memory_vectors (namespace_id, retrieval_status);
 `;
 
 let ensureVectorTablePromise: Promise<void> | null = null;
@@ -123,6 +139,14 @@ const toSourceProvenance = (value: unknown): RetrievalResult['sourceProvenance']
 
     return typeof (item as { sessionId?: unknown }).sessionId === 'string';
   });
+};
+
+const toToolNames = (value: unknown): string[] => {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.filter((item): item is string => typeof item === 'string' && item.length > 0);
 };
 
 const cosineSimilarity = (left: number[], right: number[]): number => {
@@ -201,12 +225,14 @@ export const createVectorStore = (deps?: VectorStoreDeps): VectorStore => ({
             confidence,
             quality_score,
             status,
+            retrieval_status,
+            tool_names,
             source_provenance,
             content_hash,
             embedding_json,
             updated_at
           )
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10, $11::jsonb, NOW())
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb, $11::jsonb, $12, $13::jsonb, NOW())
           ON CONFLICT (memory_id)
           DO UPDATE SET
             namespace_id = EXCLUDED.namespace_id,
@@ -216,6 +242,8 @@ export const createVectorStore = (deps?: VectorStoreDeps): VectorStore => ({
             confidence = EXCLUDED.confidence,
             quality_score = EXCLUDED.quality_score,
             status = EXCLUDED.status,
+            retrieval_status = EXCLUDED.retrieval_status,
+            tool_names = EXCLUDED.tool_names,
             source_provenance = EXCLUDED.source_provenance,
             content_hash = EXCLUDED.content_hash,
             embedding_json = EXCLUDED.embedding_json,
@@ -230,6 +258,8 @@ export const createVectorStore = (deps?: VectorStoreDeps): VectorStore => ({
           candidate.confidence,
           candidate.qualityScore ?? null,
           candidate.status ?? 'published',
+          candidate.retrievalStatus ?? null,
+          JSON.stringify(candidate.toolNames ?? []),
           JSON.stringify(candidate.sourceProvenance ?? []),
           contentHash,
           JSON.stringify(embedding),
@@ -242,9 +272,11 @@ export const createVectorStore = (deps?: VectorStoreDeps): VectorStore => ({
     }
   },
 
-  async search({ namespaceId, embedding, limit }) {
+  async search({ namespaceId, embedding, limit, filters }) {
     await ensureVectorTable();
     const candidateLimit = Math.min(Math.max(limit * SEARCH_CANDIDATE_MULTIPLIER, SEARCH_CANDIDATE_FLOOR), 250);
+    const statuses = filters?.statuses ?? [];
+    const toolNames = filters?.toolNames ?? [];
 
     const result = await query<VectorStoreRow>(
       `
@@ -257,16 +289,30 @@ export const createVectorStore = (deps?: VectorStoreDeps): VectorStore => ({
           confidence,
           quality_score,
           status,
+          retrieval_status,
+          tool_names,
           source_provenance,
           content_hash,
           embedding_json
         FROM memory_vectors
         WHERE namespace_id = $1
           AND status = 'published'
+          AND (
+            COALESCE(array_length($2::text[], 1), 0) = 0
+            OR retrieval_status = ANY($2::text[])
+          )
+          AND (
+            COALESCE(array_length($3::text[], 1), 0) = 0
+            OR EXISTS (
+              SELECT 1
+              FROM jsonb_array_elements_text(tool_names) AS tool_name(value)
+              WHERE tool_name.value = ANY($3::text[])
+            )
+          )
         ORDER BY COALESCE(quality_score, confidence) DESC, updated_at DESC
-        LIMIT $2
+        LIMIT $4
       `,
-      [namespaceId, candidateLimit]
+      [namespaceId, statuses, toolNames, candidateLimit]
     );
 
     return result.rows
@@ -279,6 +325,8 @@ export const createVectorStore = (deps?: VectorStoreDeps): VectorStore => ({
         confidence: row.confidence,
         qualityScore: row.quality_score ?? undefined,
         status: row.status as VectorStoreCandidate['status'],
+        retrievalStatus: row.retrieval_status ?? undefined,
+        toolNames: toToolNames(row.tool_names),
         reasons: [],
         sourceProvenance: toSourceProvenance(row.source_provenance),
         similarity: cosineSimilarity(embedding, toEmbedding(row.embedding_json)),

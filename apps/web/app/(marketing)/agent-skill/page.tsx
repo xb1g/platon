@@ -1,35 +1,67 @@
 "use client";
 
+import {
+  AGENT_INSTALLATION_URL,
+  API_BASE_URL,
+  EMBEDDED_AGENT_ID,
+  EMBEDDED_PLAN_ID,
+  MCP_ENDPOINT_URL,
+} from "@/lib/agent-installation";
 import Link from "next/link";
-import { ArrowLeft, BookOpen, Copy, Check } from "lucide-react";
-import { useState, useRef } from "react";
+import { ArrowLeft, BookOpen, Check, Copy } from "lucide-react";
+import { useState } from "react";
 
-const plainTextContent = `# Platon MCP Service Reference
+const DIRECT_API_HEADER = "payment-signature: <x402-access-token>";
+const RETRIEVE_API_URL = `${API_BASE_URL}/retrieve`;
+const SESSIONS_API_URL = `${API_BASE_URL}/sessions`;
 
-## Installation
-
-For the hosted MCP service, generate an x402 token and attach it at the transport layer:
-
-const subscriberPayments = Payments.getInstance({
+const hostedUsageSnippet = `const subscriberPayments = Payments.getInstance({
   nvmApiKey: process.env.NVM_SUBSCRIBER_API_KEY!,
   environment: process.env.NVM_ENVIRONMENT || "sandbox"
 })
 
 const { accessToken } = await subscriberPayments.x402.getX402AccessToken(
-  process.env.NVM_PLAN_ID!,
-  process.env.NVM_AGENT_ID!
+  "${EMBEDDED_PLAN_ID}",
+  "${EMBEDDED_AGENT_ID}"
 )
-
-Then add Platon to your MCP configuration (mcp.json):
 
 {
   "mcpServers": {
     "platon": {
-      "url": "https://platon.bigf.me/mcp",
-      "headers": { "Authorization": "Bearer \${X402_ACCESS_TOKEN}" }
+      "url": "${MCP_ENDPOINT_URL}",
+      "headers": { "Authorization": "Bearer \${accessToken}" }
     }
   }
-}
+}`;
+
+const firstMcpSessionSnippet = `POST ${MCP_ENDPOINT_URL}
+Accept: application/json, text/event-stream
+Authorization: Bearer <x402-access-token>
+
+After initialize succeeds:
+Mcp-Session-Id: <session-id-from-initialize>`;
+
+const plainTextContent = `# Platon MCP Service Reference
+
+## Installation
+
+Read the canonical hosted install contract first:
+
+${AGENT_INSTALLATION_URL}
+
+For the hosted MCP service, generate an x402 token and attach it at the transport layer.
+Use the hosted Nevermined identifiers exactly as shown here:
+
+${hostedUsageSnippet}
+
+For the first remote MCP session, the transport must also send:
+- Accept: application/json, text/event-stream
+- Mcp-Session-Id: <session-id-from-initialize> on requests after initialize
+
+If your runtime does not support remote MCP, call the HTTP API directly:
+- POST ${RETRIEVE_API_URL}
+- POST ${SESSIONS_API_URL}
+- ${DIRECT_API_HEADER}
 
 ## Overview
 
@@ -292,29 +324,39 @@ export default function AgentSkillPage() {
         {/* Installation */}
         <Section title="Installation">
           <p className="text-text-secondary leading-relaxed mb-4">
-            Generate an x402 token with a Nevermined subscriber key, then add
-            Platon to your MCP configuration file (<code className="text-accent-emerald text-sm">mcp.json</code>):
+            Use the canonical hosted contract first:
+            {" "}
+            <a
+              href={AGENT_INSTALLATION_URL}
+              className="text-accent-emerald hover:text-accent-sky transition-colors"
+              target="_blank"
+              rel="noreferrer"
+            >
+              {AGENT_INSTALLATION_URL}
+            </a>
+            . This page is a quick reference, not the source of truth for first-run transport setup.
           </p>
-          <CodeBlock>
-            {`const subscriberPayments = Payments.getInstance({
-  nvmApiKey: process.env.NVM_SUBSCRIBER_API_KEY!,
-  environment: process.env.NVM_ENVIRONMENT || "sandbox"
-})
-
-const { accessToken } = await subscriberPayments.x402.getX402AccessToken(
-  process.env.NVM_PLAN_ID!,
-  process.env.NVM_AGENT_ID!
-)
-
-{
-  "mcpServers": {
-    "platon": {
-      "url": "https://platon.bigf.me/mcp",
-      "headers": { "Authorization": "Bearer \${accessToken}" }
-    }
-  }
-}`}
-          </CodeBlock>
+          <p className="text-text-secondary leading-relaxed mb-4">
+            For hosted usage, generate an x402 token with a Nevermined subscriber key using the embedded plan and agent IDs, then attach it at the MCP transport layer:
+          </p>
+          <CodeBlock>{hostedUsageSnippet}</CodeBlock>
+          <p className="text-text-secondary leading-relaxed mb-4">
+            The first remote MCP session also needs the StreamableHTTP transport contract. Without these headers, initialization can fail before the agent ever reaches a tool call.
+          </p>
+          <CodeBlock>{firstMcpSessionSnippet}</CodeBlock>
+          <p className="text-text-secondary leading-relaxed">
+            If your runtime does not support remote MCP, use the direct HTTP API instead and send
+            {" "}
+            <code className="text-accent-emerald text-sm">{DIRECT_API_HEADER}</code>
+            {" "}
+            to
+            {" "}
+            <code className="text-accent-emerald text-sm">{RETRIEVE_API_URL}</code>
+            {" "}
+            and
+            {" "}
+            <code className="text-accent-emerald text-sm">{SESSIONS_API_URL}</code>.
+          </p>
         </Section>
 
         {/* Overview */}
@@ -537,12 +579,16 @@ const { accessToken } = await subscriberPayments.x402.getX402AccessToken(
         {/* API Endpoints */}
         <Section title="API Endpoints">
           <p className="text-text-secondary leading-relaxed mb-4">
-            These HTTP endpoints are equivalent alternatives to the MCP tools:
+            These HTTP endpoints are equivalent alternatives to the MCP tools. Send
+            {" "}
+            <code className="text-accent-emerald text-sm">{DIRECT_API_HEADER}</code>
+            {" "}
+            on each request:
           </p>
           <div className="space-y-3">
             <div className="rounded-xl border border-border-default/50 p-4 flex flex-col sm:flex-row gap-2 sm:gap-4">
               <code className="text-accent-emerald text-sm font-semibold whitespace-nowrap">
-                POST https://platon.bigf.me/api/sessions
+                POST {SESSIONS_API_URL}
               </code>
               <span className="text-text-muted text-sm">
                 Session ingestion (equivalent to memory.dump_session)
@@ -550,7 +596,7 @@ const { accessToken } = await subscriberPayments.x402.getX402AccessToken(
             </div>
             <div className="rounded-xl border border-border-default/50 p-4 flex flex-col sm:flex-row gap-2 sm:gap-4">
               <code className="text-accent-emerald text-sm font-semibold whitespace-nowrap">
-                POST https://platon.bigf.me/api/retrieve
+                POST {RETRIEVE_API_URL}
               </code>
               <span className="text-text-muted text-sm">
                 Context retrieval (equivalent to memory.retrieve_context)

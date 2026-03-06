@@ -7,6 +7,7 @@ type RankableResult = RetrievalResult & {
   createdAt?: string;
   namespaceMatch?: NamespaceMatch;
   signal?: RetrievalSignal;
+  semanticSimilarity?: number;
 };
 
 export type ScoredResult = RankableResult & {
@@ -22,6 +23,7 @@ const WEIGHTS = {
   signal: 0.05,
   quality: 0.1,
   usefulness: 0.15,
+  semanticSimilarity: 0.15,
 } as const;
 
 const SOURCE_BOOST: Record<string, number> = {
@@ -111,7 +113,7 @@ const buildRankingReasons = (result: ScoredResult): RetrievalResult['reasons'] =
   if (signal === 'failure_pattern') {
     pushReason(reasons, {
       kind: 'graph_neighbor',
-      summary: 'Matched a prior failure pattern linked in graph memory.',
+      summary: 'Matched a prior failure pattern from this agent memory set.',
       score: 0.9,
     });
   }
@@ -152,7 +154,11 @@ const buildRankingReasons = (result: ScoredResult): RetrievalResult['reasons'] =
 };
 
 const computeScore = (result: ScoredResult): number => {
-  const confidenceScore = result.confidence * WEIGHTS.confidence;
+  const retrievalConfidence =
+    result.source === 'vector'
+      ? Math.min(result.confidence, result.semanticSimilarity ?? result.confidence)
+      : result.confidence;
+  const confidenceScore = retrievalConfidence * WEIGHTS.confidence;
   const freshnessScore = getFreshnessScore(result.createdAt) * WEIGHTS.freshness;
   const exactnessScore =
     (EXACTNESS_BOOST[result.namespaceMatch ?? (result.source === 'graph' ? 'exact' : 'cross_namespace')] ??
@@ -163,6 +169,8 @@ const computeScore = (result: ScoredResult): number => {
       SIGNAL_BOOST.semantic) * WEIGHTS.signal;
   const qualityScore = (result.qualityScore ?? result.confidence) * WEIGHTS.quality;
   const usefulnessScore = getUsefulnessScore(result) * WEIGHTS.usefulness;
+  const semanticSimilarityScore =
+    result.source === 'vector' ? (result.semanticSimilarity ?? 0) * WEIGHTS.semanticSimilarity : 0;
   const typeBoost = TYPE_BOOST[result.type] ?? 1.0;
   const statusPenalty =
     result.status === 'quarantined' ? 0 :
@@ -176,7 +184,8 @@ const computeScore = (result: ScoredResult): number => {
     sourceScore +
     signalScore +
     qualityScore +
-    usefulnessScore
+    usefulnessScore +
+    semanticSimilarityScore
   ) * typeBoost * statusPenalty;
 };
 
@@ -204,7 +213,7 @@ export const rankResults = (
   const sorted = [...deduped.values()].sort((a, b) => b.score - a.score);
 
   return sorted.map(
-    ({ score, source, createdAt, namespaceMatch, signal, ...rest }): RetrievalResult => ({
+    ({ score, source, createdAt, namespaceMatch, signal, semanticSimilarity, ...rest }): RetrievalResult => ({
       ...rest,
       reasons: buildRankingReasons({
         ...rest,
@@ -213,6 +222,7 @@ export const rankResults = (
         createdAt,
         namespaceMatch,
         signal,
+        semanticSimilarity,
       }),
     })
   );

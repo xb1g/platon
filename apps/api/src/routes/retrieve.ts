@@ -47,7 +47,8 @@ export const retrieveRoutes: FastifyPluginAsync = async (server) => {
             {
               namespaceId: namespace.namespaceId,
               query: data.query,
-              limit: data.limit
+              limit: data.limit,
+              filters: data.filters
             },
             { session }
           ),

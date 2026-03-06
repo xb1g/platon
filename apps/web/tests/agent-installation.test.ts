@@ -67,6 +67,20 @@ describe("agent installation content", () => {
     expect(landingPage).not.toContain("X-Debug-Session-Id");
   });
 
+  it("keeps the agent skill page aligned with the hosted install contract", () => {
+    const agentSkillPage = readFixture("../app/(marketing)/agent-skill/page.tsx");
+
+    expect(agentSkillPage).toContain('from "@/lib/agent-installation"');
+    expect(agentSkillPage).toContain("AGENT_INSTALLATION_URL");
+    expect(agentSkillPage).toContain("EMBEDDED_PLAN_ID");
+    expect(agentSkillPage).toContain("EMBEDDED_AGENT_ID");
+    expect(agentSkillPage).toContain("Accept: application/json, text/event-stream");
+    expect(agentSkillPage).toContain("Mcp-Session-Id");
+    expect(agentSkillPage).toContain("payment-signature: <x402-access-token>");
+    expect(agentSkillPage).not.toContain("process.env.NVM_PLAN_ID");
+    expect(agentSkillPage).not.toContain("process.env.NVM_AGENT_ID");
+  });
+
   it("does not ship localhost debug ingestion hooks in the root layout", () => {
     const rootLayout = readFixture("../app/layout.tsx");
 

@@ -1,15 +1,16 @@
-import type { RetrievalRequest, RetrievalResult } from '@memory/shared';
+import type { RetrievalFilters, RetrievalRequest, RetrievalResult } from '@memory/shared';
 import type { Session as Neo4jSession } from 'neo4j-driver';
 import { embedText } from './embed.js';
 import { vectorStore, type VectorStore, type VectorStoreCandidate } from './vector-store.js';
 
-export type VectorSearchInput = Pick<RetrievalRequest, 'query' | 'limit'> & {
+export type VectorSearchInput = Pick<RetrievalRequest, 'query' | 'limit' | 'filters'> & {
   namespaceId: string;
 };
 
 type LoadCandidatesArgs = {
   namespaceId: string;
   limit: number;
+  filters?: RetrievalFilters;
 };
 
 type VectorSearchDeps = {
@@ -22,26 +23,60 @@ type VectorSearchDeps = {
 
 const DEFAULT_CANDIDATE_MULTIPLIER = 5;
 
+const matchesFilters = (
+  candidate: Pick<VectorStoreCandidate, 'retrievalStatus' | 'toolNames'>,
+  filters?: RetrievalFilters
+) => {
+  const statuses = filters?.statuses ?? [];
+  const toolNames = filters?.toolNames ?? [];
+  const statusAllowed =
+    statuses.length === 0 ||
+    (typeof candidate.retrievalStatus === 'string' && statuses.includes(candidate.retrievalStatus));
+  const toolAllowed =
+    toolNames.length === 0 ||
+    (candidate.toolNames ?? []).some((toolName) => toolNames.includes(toolName));
+
+  return statusAllowed && toolAllowed;
+};
+
 const loadVectorCandidates = async (
-  { namespaceId, limit }: LoadCandidatesArgs,
+  { namespaceId, limit, filters }: LoadCandidatesArgs,
   session?: Neo4jSession
 ): Promise<VectorStoreCandidate[]> => {
   if (!session) {
     return [];
   }
 
+  const statusFilter = filters?.statuses?.length
+    ? 'AND s.status IN $statuses'
+    : '';
+
+  const toolFilter = filters?.toolNames?.length
+    ? 'AND EXISTS { (s)-[:USED_TOOL]->(t:Tool) WHERE t.name IN $toolNames }'
+    : '';
+
   const result = await session.run(
-    `MATCH (ns:MemoryNamespace { namespaceId: $namespaceId })-[:HAS_LEARNING]->(l:Learning)
+    `MATCH (ns:MemoryNamespace { namespaceId: $namespaceId })-[:HAS_SESSION]->(s:Session)-[:PRODUCED]->(l:Learning)
      WHERE coalesce(l.status, 'published') = 'published'
+       ${statusFilter}
+       ${toolFilter}
+     OPTIONAL MATCH (s)-[:USED_TOOL]->(tool:Tool)
+     WITH l, s, collect(DISTINCT tool.name) AS toolNames
      RETURN
        l.id AS id,
        $namespaceId AS namespaceId,
-       'learning' AS type,
+       CASE s.status
+         WHEN 'failed' THEN 'failure'
+         WHEN 'success' THEN 'success_pattern'
+         ELSE 'learning'
+       END AS type,
        l.title AS title,
        coalesce(l.summary, l.title) AS summary,
        coalesce(l.confidence, 0.5) AS confidence,
        coalesce(l.qualityScore, l.confidence, 0.5) AS qualityScore,
        coalesce(l.status, 'published') AS status,
+       s.status AS retrievalStatus,
+       toolNames AS toolNames,
        [] AS sourceProvenance
      ORDER BY coalesce(l.qualityScore, l.confidence, 0.5) DESC,
               coalesce(l.updatedAt, l.createdAt) DESC
@@ -49,6 +84,8 @@ const loadVectorCandidates = async (
     {
       namespaceId,
       limit,
+      statuses: filters?.statuses ?? [],
+      toolNames: filters?.toolNames ?? [],
     }
   );
 
@@ -61,6 +98,12 @@ const loadVectorCandidates = async (
     confidence: Number(record.get('confidence') ?? 0.5),
     qualityScore: Number(record.get('qualityScore') ?? 0.5),
     status: record.get('status') as RetrievalResult['status'],
+    retrievalStatus: (record.get('retrievalStatus') as string | null) ?? undefined,
+    toolNames: Array.isArray(record.get('toolNames'))
+      ? (record.get('toolNames') as unknown[]).filter(
+          (value): value is string => typeof value === 'string' && value.length > 0
+        )
+      : [],
     sourceProvenance: [],
     reasons: [],
   }));
@@ -85,7 +128,13 @@ const buildReasons = (
 export const vectorSearch = async (
   input: VectorSearchInput,
   deps?: VectorSearchDeps
-): Promise<RetrievalResult[]> => {
+): Promise<
+  (RetrievalResult & {
+    namespaceMatch: 'exact';
+    signal: 'failure_pattern' | 'semantic';
+    semanticSimilarity: number;
+  })[]
+> => {
   const embedQuery = deps?.embedQuery ?? embedText;
   const store = deps?.store ?? vectorStore;
   const loadCandidates =
@@ -97,7 +146,10 @@ export const vectorSearch = async (
     const candidates = (await loadCandidates({
       namespaceId: input.namespaceId,
       limit: input.limit * DEFAULT_CANDIDATE_MULTIPLIER,
-    })).filter((candidate) => candidate.namespaceId === input.namespaceId);
+      filters: input.filters,
+    }))
+      .filter((candidate) => candidate.namespaceId === input.namespaceId)
+      .filter((candidate) => matchesFilters(candidate, input.filters));
 
     if (candidates.length === 0) {
       return [];
@@ -112,12 +164,18 @@ export const vectorSearch = async (
       namespaceId: input.namespaceId,
       embedding,
       limit: input.limit,
+      filters: input.filters,
     });
 
-    return hits.map(({ similarity, ...hit }): RetrievalResult => ({
-      ...hit,
-      reasons: buildReasons(similarity, hit.qualityScore),
-    }));
+    return hits
+      .filter((hit) => matchesFilters(hit, input.filters))
+      .map(({ similarity, retrievalStatus, toolNames, ...hit }) => ({
+        ...hit,
+        namespaceMatch: 'exact' as const,
+        signal: hit.type === 'failure' ? 'failure_pattern' as const : 'semantic' as const,
+        semanticSimilarity: Number(similarity.toFixed(4)),
+        reasons: buildReasons(similarity, hit.qualityScore),
+      }));
   } catch (error) {
     (deps?.logger ?? console).warn(
       `Vector retrieval unavailable for namespace ${input.namespaceId}: ${

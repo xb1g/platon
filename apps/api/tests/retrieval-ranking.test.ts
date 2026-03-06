@@ -144,12 +144,43 @@ describe('Retrieval Ranking', () => {
         qualityScore: 0.93,
         namespaceMatch: 'exact',
         signal: 'semantic',
+        semanticSimilarity: 0.96,
       }),
     ];
 
     const ranked = rankResults(graphResults, vectorResults);
 
     expect(ranked.map((result) => result.id)).toEqual(['graph-1', 'vector-1']);
+  });
+
+  it('keeps exact failure matches above weak semantic vector near-misses in the same namespace', () => {
+    const graphResults: RankTestResult[] = [
+      makeResult({
+        id: 'postgres-failure',
+        type: 'failure',
+        title: 'Postgres billing-ledger migration lock timeout',
+        confidence: 0.72,
+        namespaceMatch: 'exact',
+        signal: 'failure_pattern',
+      }),
+    ];
+
+    const vectorResults: RankTestResult[] = [
+      makeResult({
+        id: 'redis-success',
+        type: 'success_pattern',
+        title: 'Redis failover recovery',
+        confidence: 0.98,
+        qualityScore: 0.98,
+        namespaceMatch: 'exact',
+        signal: 'semantic',
+        semanticSimilarity: 0.16,
+      }),
+    ];
+
+    const ranked = rankResults(graphResults, vectorResults);
+
+    expect(ranked.map((result) => result.id)).toEqual(['postgres-failure', 'redis-success']);
   });
 
   it('fresh learnings outrank stale near-ties once freshness is considered', () => {
