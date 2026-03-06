@@ -5,6 +5,27 @@ import Link from "next/link";
 import { Zap, ArrowRight, ChevronRight, Sparkles, Copy, Check } from "lucide-react";
 import { useState } from "react";
 
+// #region agent log
+if (typeof window !== "undefined") {
+  fetch("http://127.0.0.1:7679/ingest/fbe5c566-2dc0-4951-95c4-5ea3a8ba181a", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Debug-Session-Id": "dc9466"
+    },
+    body: JSON.stringify({
+      sessionId: "dc9466",
+      runId: "run1",
+      hypothesisId: "H1",
+      location: "apps/web/app/(marketing)/page.tsx:module",
+      message: "marketing page module evaluated",
+      data: {},
+      timestamp: Date.now()
+    })
+  }).catch(() => {});
+}
+// #endregion
+
 /* ─── Floating geometric block ─── */
 function FloatingBlock({
   w,
@@ -348,10 +369,31 @@ const navItems = [
   { label: "Products", href: "#products" },
   { label: "Solutions", href: "#solutions" },
   { label: "Research", href: "#research" },
+  { label: "How It Works", href: "/how-it-works" },
   { label: "Spec", href: "/spec" },
 ];
 
 export default function LandingPage() {
+  // #region agent log
+  if (typeof window !== "undefined") {
+    fetch("http://127.0.0.1:7679/ingest/fbe5c566-2dc0-4951-95c4-5ea3a8ba181a", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Debug-Session-Id": "dc9466"
+      },
+      body: JSON.stringify({
+        sessionId: "dc9466",
+        runId: "run1",
+        hypothesisId: "H2",
+        location: "apps/web/app/(marketing)/page.tsx:LandingPage",
+        message: "LandingPage rendered",
+        data: {},
+        timestamp: Date.now()
+      })
+    }).catch(() => {});
+  }
+  // #endregion
   return (
     <div className="relative overflow-hidden">
       {/* ═══ NAVBAR ═══ */}
@@ -764,6 +806,7 @@ export default function LandingPage() {
           <div className="flex items-center gap-6">
             {[
               { label: "Product", href: "#products" },
+              { label: "How It Works", href: "/how-it-works" },
               { label: "Spec", href: "/spec" },
               { label: "Dashboard", href: "/dashboard" },
               { label: "GitHub", href: "#" },
