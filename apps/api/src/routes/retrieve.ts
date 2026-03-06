@@ -39,7 +39,14 @@ export const retrieveRoutes: FastifyPluginAsync = async (server) => {
           },
           { session }
         );
-        const vectorResults = await vectorSearch(data.query);
+        const vectorResults = await vectorSearch(
+          {
+            namespaceId: namespace.namespaceId,
+            query: data.query,
+            limit: data.limit,
+          },
+          { session }
+        );
         const rankedResults = rankResults(graphResults, vectorResults);
 
         return reply.status(200).send({

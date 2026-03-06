@@ -17,6 +17,8 @@ const makeResult = (
   title: 'Test result',
   summary: 'Test summary',
   confidence: 0.5,
+  reasons: [],
+  sourceProvenance: [],
   namespaceMatch: 'exact',
   signal: 'semantic',
   ...overrides,
@@ -121,6 +123,33 @@ describe('Retrieval Ranking', () => {
     const ranked = rankResults(graphResults, vectorResults);
 
     expect(ranked[0].id).toBe('failure-1');
+  });
+
+  it('combines vector and graph results before ranking', () => {
+    const graphResults: RankTestResult[] = [
+      makeResult({
+        id: 'graph-1',
+        type: 'failure',
+        confidence: 0.72,
+        namespaceMatch: 'exact',
+        signal: 'failure_pattern',
+      }),
+    ];
+
+    const vectorResults: RankTestResult[] = [
+      makeResult({
+        id: 'vector-1',
+        type: 'learning',
+        confidence: 0.81,
+        qualityScore: 0.93,
+        namespaceMatch: 'exact',
+        signal: 'semantic',
+      }),
+    ];
+
+    const ranked = rankResults(graphResults, vectorResults);
+
+    expect(ranked.map((result) => result.id)).toEqual(['graph-1', 'vector-1']);
   });
 
   it('fresh learnings outrank stale near-ties once freshness is considered', () => {

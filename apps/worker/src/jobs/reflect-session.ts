@@ -9,6 +9,7 @@ import { storeReflection } from '../lib/store-reflection.js';
 import type { NamespaceParams } from '../lib/memory-namespace.js';
 import type { ReflectionData, StoreReflectionDeps } from '../lib/store-reflection.js';
 import { withRawSessionProvenance } from '../lib/store-memory-governance.js';
+import { governMemory } from './govern-memory.js';
 
 export type DirectReflectSessionInput = StoredSessionPayload & {
   subscriberId: string;
@@ -69,8 +70,11 @@ export const reflectSession = async (
       deps?.reflect ? await deps.reflect(session) : await llmReflect(session),
       rawSessionId
     );
+    const governedReflection = governMemory(reflection, {
+      rawSessionId,
+    });
 
-    await storeReflection(reflection, namespace, deps);
+    await storeReflection(governedReflection, namespace, deps);
 
     if (rawSessionId != null) {
       await sessionStore.markReflectionCompleted(rawSessionId);

@@ -4,20 +4,27 @@ import { getSession } from './lib/neo4j.js';
 import { reflectSession, type ReflectSessionInput } from './jobs/reflect-session.js';
 
 export const processReflectionJob = async (job: Job<ReflectSessionInput>) => {
-  if (job.name === 'reflect-session') {
-    const session = getSession();
-    try {
-      await reflectSession(job.data, { session });
-    } finally {
+  switch (job.name) {
+    case 'reflect-session': {
+      const session = getSession();
+
       try {
-        await session.close();
-      } catch (closeError) {
-        console.warn(
-          `Failed to close Neo4j session for job ${job.id}:`,
-          closeError instanceof Error ? closeError.message : String(closeError)
-        );
+        await reflectSession(job.data, { session });
+      } finally {
+        try {
+          await session.close();
+        } catch (closeError) {
+          console.warn(
+            `Failed to close Neo4j session for job ${job.id}:`,
+            closeError instanceof Error ? closeError.message : String(closeError)
+          );
+        }
       }
+
+      return;
     }
+    default:
+      throw new Error(`Unknown reflection job: ${job.name}`);
   }
 };
 
@@ -30,5 +37,5 @@ worker.on('completed', job => {
 });
 
 worker.on('failed', (job, err) => {
-  console.log(`${job?.id} has failed with ${err.message}`);
+  console.error(`${job?.id} (${job?.name}) has failed with ${err.message}`);
 });

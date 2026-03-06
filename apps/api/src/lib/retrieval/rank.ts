@@ -15,11 +15,12 @@ export type ScoredResult = RankableResult & {
 };
 
 const WEIGHTS = {
-  confidence: 0.45,
+  confidence: 0.35,
   freshness: 0.2,
   exactness: 0.2,
   sourceBoost: 0.1,
   signal: 0.05,
+  quality: 0.1,
 } as const;
 
 const SOURCE_BOOST: Record<string, number> = {
@@ -81,9 +82,21 @@ const computeScore = (result: ScoredResult): number => {
   const signalScore =
     (SIGNAL_BOOST[result.signal ?? (result.type === 'failure' ? 'failure_pattern' : 'semantic')] ??
       SIGNAL_BOOST.semantic) * WEIGHTS.signal;
+  const qualityScore = (result.qualityScore ?? result.confidence) * WEIGHTS.quality;
   const typeBoost = TYPE_BOOST[result.type] ?? 1.0;
+  const statusPenalty =
+    result.status === 'quarantined' ? 0 :
+    result.status === 'suppressed' ? 0.2 :
+    1.0;
 
-  return (confidenceScore + freshnessScore + exactnessScore + sourceScore + signalScore) * typeBoost;
+  return (
+    confidenceScore +
+    freshnessScore +
+    exactnessScore +
+    sourceScore +
+    signalScore +
+    qualityScore
+  ) * typeBoost * statusPenalty;
 };
 
 export const rankResults = (

@@ -40,7 +40,8 @@ export const graphSearch = async (
   const result = await deps.session.run(
     `MATCH (ns:MemoryNamespace { namespaceId: $namespaceId })-[:HAS_SESSION]->(s:Session)
      OPTIONAL MATCH (s)-[:PRODUCED]->(l:Learning)
-     WHERE l.title CONTAINS $query OR s.taskSummary CONTAINS $query
+     WHERE (l.title CONTAINS $query OR s.taskSummary CONTAINS $query)
+       AND (l IS NULL OR coalesce(l.status, 'published') = 'published')
      ${statusFilter}
      ${toolFilter}
      WITH l, s,
@@ -50,7 +51,9 @@ export const graphSearch = async (
            type: CASE s.status WHEN 'failed' THEN 'failure' ELSE 'learning' END,
            title: l.title,
            summary: coalesce(l.summary, l.title),
-           confidence: coalesce(l.confidence, s.confidence, 0.5),
+            confidence: coalesce(l.confidence, s.confidence, 0.5),
+           status: coalesce(l.status, 'published'),
+           qualityScore: coalesce(l.qualityScore, l.confidence, s.confidence, 0.5),
            namespaceMatch: 'exact',
            signal: CASE s.status WHEN 'failed' THEN 'failure_pattern' ELSE 'semantic' END
          }
@@ -86,6 +89,10 @@ export const graphSearch = async (
       title: r.title,
       summary: r.summary,
       confidence: typeof r.confidence === 'number' ? r.confidence : 0.5,
+      status: r.status ?? undefined,
+      qualityScore: typeof r.qualityScore === 'number' ? r.qualityScore : undefined,
+      reasons: [],
+      sourceProvenance: [],
       createdAt: record.get('createdAt') ?? undefined,
       namespaceMatch: r.namespaceMatch ?? 'exact',
       signal: r.signal ?? 'semantic',
