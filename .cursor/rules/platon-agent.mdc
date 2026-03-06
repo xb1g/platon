@@ -20,9 +20,11 @@ Before starting a task, call Platon to surface relevant prior experience:
 
 After completing a task (success or failure), dump the session for async reflection:
 
-- **`memory.dump_session(sessionId, content)`** — Ingests raw execution logs. The platform reflects on them in the background and extracts new knowledge.
+- **`memory.dump_session(payload)`** — Ingests a structured session payload. The platform reflects on it in the background and extracts new knowledge.
 
-Use a unique `sessionId` (e.g., task slug + timestamp) and include a concise summary of the run: task, steps, tools used, outcomes, and any errors.
+Use a unique `sessionId` (e.g., task slug + timestamp) and include a concise summary of the run: `task`, `outcome`, `tools`, `events`, `errors`, and optional `artifacts`.
+
+**HTTP and MCP are co-equal interfaces** — use the REST API or MCP tool with the same structured payload. See `agent.md` for the schema.
 
 ## Reference
 

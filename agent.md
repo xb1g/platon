@@ -42,7 +42,11 @@ After completing a task (or failing), dump your execution logs for async reflect
 
 **Tools:**
 
-- `memory.dump_session(sessionId: string, content: string)`: Ingests the raw logs. The system will automatically reflect on this in the background to extract new knowledge.
+- `memory.dump_session(payload)`: Ingests a structured session payload. The system will automatically reflect on it in the background to extract new knowledge.
+
+**Payload fields:** `sessionId`, `agentId`, `agentKind`, `task`, `outcome`, `tools`, `events`, `artifacts`, `errors`. Optional: `humanFeedback`, `inputContextSummary`.
+
+**HTTP and MCP are co-equal interfaces** — use the REST API or MCP tool with the same structured payload. Claude Hooks are an optional adapter; the core architecture is provider-neutral.
 
 ## Metadata & Metering
 

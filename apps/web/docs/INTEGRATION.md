@@ -139,12 +139,18 @@ Query the memory graph for relevant context.
 
 ### memory.dump_session
 
-Persist a completed session for reflection.
+Persist a completed session for reflection. Use the same structured payload as the HTTP API.
 
 ```json
 {
   "sessionId": "sess-001",
-  "content": "JSON string of the full session payload"
+  "agentId": "my-agent",
+  "agentKind": "code-assistant",
+  "task": { "kind": "code-review", "summary": "Review PR #42" },
+  "outcome": { "status": "success", "summary": "3 issues found and fixed" },
+  "tools": [{ "name": "git-diff", "category": "vcs" }],
+  "events": [{ "type": "complete", "summary": "Review submitted" }],
+  "errors": []
 }
 ```
 

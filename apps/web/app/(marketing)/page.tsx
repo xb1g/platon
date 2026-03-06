@@ -683,7 +683,7 @@ export default function LandingPage() {
               {
                 step: "01",
                 title: "Dump sessions",
-                desc: "Your agents send session data via MCP or REST API after each task — tools used, events, outcomes, errors.",
+                desc: "Your agents send structured session payloads via HTTP or MCP after each task — both interfaces are co-equal. Include task, outcome, tools, events, and errors.",
               },
               {
                 step: "02",
@@ -693,7 +693,7 @@ export default function LandingPage() {
               {
                 step: "03",
                 title: "Retrieve & improve",
-                desc: "Before the next task, agents query relevant memories — failures to avoid, tactics to reuse, context to apply.",
+                desc: "Before each task, agents manually call retrieve_context and get_similar_failures to surface relevant memories — failures to avoid, tactics to reuse, context to apply.",
               },
             ].map((item, i) => (
               <motion.div
