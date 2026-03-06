@@ -50,19 +50,16 @@ export const validateRegisterNeverminedEnv = (
   };
 };
 
-const buildApiRegistration = (config: RegisterNeverminedConfig) => ({
+export const buildApiRegistration = (config: RegisterNeverminedConfig) => ({
   agentApi: {
+    agentDefinitionUrl: `${config.publicUrl.replace(/\/$/, "")}/openapi.json`,
     endpoints: [
-      {
-        method: "POST",
-        path: "/sessions",
-        url: `${config.publicUrl.replace(/\/$/, "")}/sessions`
-      },
-      {
-        method: "POST",
-        path: "/retrieve",
-        url: `${config.publicUrl.replace(/\/$/, "")}/retrieve`
-      }
+      { POST: `${config.publicUrl.replace(/\/$/, "")}/sessions` },
+      { POST: `${config.publicUrl.replace(/\/$/, "")}/retrieve` }
+    ],
+    openEndpoints: [
+      `${config.publicUrl.replace(/\/$/, "")}/health`,
+      `${config.publicUrl.replace(/\/$/, "")}/openapi.json`
     ]
   },
   agentMetadata: {

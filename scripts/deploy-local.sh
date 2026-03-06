@@ -3,6 +3,13 @@
 
 set -e
 
+# Export repo-root environment so package-level starts inherit deployment secrets.
+if [[ -f ".env" ]]; then
+  set -a
+  source .env
+  set +a
+fi
+
 echo "Starting infrastructure (Postgres, Neo4j, Redis)..."
 docker compose up -d
 
@@ -19,6 +26,8 @@ pm2 delete all || true
 
 # Start API
 pm2 start pnpm --name "memory-api" -- --filter @memory/api start
+# Start MCP
+pm2 start pnpm --name "memory-mcp" -- --filter @memory/mcp start
 # Start Worker
 pm2 start pnpm --name "memory-worker" -- --filter @memory/worker start
 # Start Web Dashboard

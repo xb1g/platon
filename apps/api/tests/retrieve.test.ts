@@ -37,18 +37,13 @@ const paywallConfig = {
 };
 
 const buildPaidServer = async () => {
-  const startProcessingRequest = vi.fn().mockResolvedValue({
+  const verifyPermissions = vi.fn().mockResolvedValue({
     agentRequestId: "request-123",
-    agentId: "agent-runtime",
-    agentKind: "support-agent",
-    balance: {
-      isSubscriber: true
-    },
-    planId: "plan-runtime",
-    subscriberId: "subscriber-runtime"
+    isValid: true,
+    payer: "subscriber-runtime"
   });
 
-  const redeemCreditsFromRequest = vi.fn().mockResolvedValue({
+  const settlePermissions = vi.fn().mockResolvedValue({
     success: true
   });
 
@@ -56,15 +51,15 @@ const buildPaidServer = async () => {
     paywall: {
       config: paywallConfig,
       payments: {
-        requests: {
-          redeemCreditsFromRequest,
-          startProcessingRequest
+        facilitator: {
+          verifyPermissions,
+          settlePermissions
         }
       }
     }
   });
 
-  return { app, redeemCreditsFromRequest };
+  return { app, settlePermissions };
 };
 
 afterEach(() => {
@@ -241,8 +236,8 @@ describe("Retrieve API", () => {
     await app.close();
   });
 
-  it("rejects requests whose agent identity does not match the verified auth context", async () => {
-    const { app, redeemCreditsFromRequest } = await buildPaidServer();
+  it("redeems credits after a successful paid retrieval", async () => {
+    const { app, settlePermissions } = await buildPaidServer();
 
     const response = await app.inject({
       method: "POST",
@@ -252,17 +247,13 @@ describe("Retrieve API", () => {
       },
       payload: {
         agentId: "agent-runtime",
-        agentKind: "billing-agent",
+        agentKind: "support-agent",
         query: "find similar failures"
       }
     });
 
-    expect(response.statusCode).toBe(403);
-    expect(response.json()).toEqual({
-      error: "Forbidden",
-      message: "Payload agent identity does not match verified auth context"
-    });
-    expect(redeemCreditsFromRequest).not.toHaveBeenCalled();
+    expect(response.statusCode).toBe(200);
+    expect(settlePermissions).toHaveBeenCalledOnce();
 
     await app.close();
   });

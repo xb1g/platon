@@ -12,18 +12,12 @@ const baseConfig = {
 const buildApp = async () => {
   const app = Fastify();
 
-  const startProcessingRequest = vi.fn().mockResolvedValue({
+  const verifyPermissions = vi.fn().mockResolvedValue({
     agentRequestId: "request-123",
-    agentId: "agent-runtime",
-    agentKind: "support-agent",
-    balance: {
-      balance: 100n,
-      isSubscriber: true
-    },
-    planId: "plan-123",
-    subscriberId: "subscriber-789"
+    isValid: true,
+    payer: "subscriber-789"
   });
-  const redeemCreditsFromRequest = vi.fn().mockResolvedValue({
+  const settlePermissions = vi.fn().mockResolvedValue({
     data: { amountOfCredits: 1 },
     success: true,
     txHash: "0xabc"
@@ -32,9 +26,9 @@ const buildApp = async () => {
   await app.register(paywallPlugin, {
     config: baseConfig,
     payments: {
-      requests: {
-        redeemCreditsFromRequest,
-        startProcessingRequest
+      facilitator: {
+        verifyPermissions,
+        settlePermissions
       }
     }
   });
@@ -51,7 +45,7 @@ const buildApp = async () => {
 
   await app.ready();
 
-  return { app, redeemCreditsFromRequest, startProcessingRequest };
+  return { app, settlePermissions, verifyPermissions };
 };
 
 afterEach(() => {
@@ -60,7 +54,7 @@ afterEach(() => {
 
 describe("paywallPlugin", () => {
   it("leaves health public", async () => {
-    const { app, redeemCreditsFromRequest, startProcessingRequest } = await buildApp();
+    const { app, settlePermissions, verifyPermissions } = await buildApp();
 
     const response = await app.inject({
       method: "GET",
@@ -69,14 +63,14 @@ describe("paywallPlugin", () => {
 
     expect(response.statusCode).toBe(200);
     expect(response.json()).toEqual({ status: "ok" });
-    expect(startProcessingRequest).not.toHaveBeenCalled();
-    expect(redeemCreditsFromRequest).not.toHaveBeenCalled();
+    expect(verifyPermissions).not.toHaveBeenCalled();
+    expect(settlePermissions).not.toHaveBeenCalled();
 
     await app.close();
   });
 
   it("returns 402 with a payment-required header for unpaid protected requests", async () => {
-    const { app, redeemCreditsFromRequest, startProcessingRequest } = await buildApp();
+    const { app, settlePermissions, verifyPermissions } = await buildApp();
 
     const response = await app.inject({
       method: "POST",
@@ -105,14 +99,14 @@ describe("paywallPlugin", () => {
         }
       ]
     });
-    expect(startProcessingRequest).not.toHaveBeenCalled();
-    expect(redeemCreditsFromRequest).not.toHaveBeenCalled();
+    expect(verifyPermissions).not.toHaveBeenCalled();
+    expect(settlePermissions).not.toHaveBeenCalled();
 
     await app.close();
   });
 
   it("verifies and settles protected requests that include a payment token", async () => {
-    const { app, redeemCreditsFromRequest, startProcessingRequest } = await buildApp();
+    const { app, settlePermissions, verifyPermissions } = await buildApp();
 
     const response = await app.inject({
       method: "POST",
@@ -123,6 +117,7 @@ describe("paywallPlugin", () => {
       payload: {
         tenantId: "tenant-1",
         agentId: "agent-1",
+        agentKind: "support-agent",
         query: "redis failure",
         limit: 5,
         filters: {
@@ -136,30 +131,39 @@ describe("paywallPlugin", () => {
     expect(response.json()).toEqual({
       auth: {
         subscriberId: "subscriber-789",
-        agentId: "agent-runtime",
+        agentId: "agent-1",
         agentKind: "support-agent",
         planId: "plan-123"
       },
       results: []
     });
     expect(response.headers["payment-response"]).toBeTruthy();
-    expect(startProcessingRequest).toHaveBeenCalledOnce();
-    expect(redeemCreditsFromRequest).toHaveBeenCalledOnce();
-    expect(startProcessingRequest).toHaveBeenCalledWith(
-      "agent-456",
-      "token-123",
-      "http://localhost:80/retrieve",
-      "POST"
+    expect(verifyPermissions).toHaveBeenCalledOnce();
+    expect(settlePermissions).toHaveBeenCalledOnce();
+    expect(verifyPermissions).toHaveBeenCalledWith(
+      expect.objectContaining({
+        x402AccessToken: "token-123",
+        maxAmount: 1n
+      })
     );
-    expect(redeemCreditsFromRequest).toHaveBeenCalledWith("request-123", "token-123", 1n);
+    expect(settlePermissions).toHaveBeenCalledWith(
+      expect.objectContaining({
+        x402AccessToken: "token-123",
+        maxAmount: 1n,
+        agentRequestId: "request-123"
+      })
+    );
 
     await app.close();
   });
 
   it("does not redeem credits when the payment token is invalid", async () => {
-    const { app, redeemCreditsFromRequest, startProcessingRequest } = await buildApp();
+    const { app, settlePermissions, verifyPermissions } = await buildApp();
 
-    startProcessingRequest.mockRejectedValueOnce(new Error("invalid token"));
+    verifyPermissions.mockResolvedValueOnce({
+      isValid: false,
+      invalidReason: "invalid token"
+    });
 
     const response = await app.inject({
       method: "POST",
@@ -179,10 +183,41 @@ describe("paywallPlugin", () => {
     expect(response.statusCode).toBe(402);
     expect(response.json()).toMatchObject({
       error: "Payment Required",
-      message: "Invalid x402 access token"
+      message: "invalid token"
     });
-    expect(redeemCreditsFromRequest).not.toHaveBeenCalled();
+    expect(settlePermissions).not.toHaveBeenCalled();
 
     await app.close();
+  });
+
+  it("verifies internal MCP requests but skips settlement when internal auth is trusted", async () => {
+    process.env.PLATON_INTERNAL_AUTH_TOKEN = "internal-secret";
+    const { app, settlePermissions, verifyPermissions } = await buildApp();
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/retrieve",
+      headers: {
+        "payment-signature": "token-123",
+        "x-platon-internal-auth": "internal-secret"
+      },
+      payload: {
+        agentId: "agent-1",
+        agentKind: "support-agent",
+        query: "redis failure",
+        limit: 5,
+        filters: {
+          statuses: [],
+          toolNames: []
+        }
+      }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(verifyPermissions).toHaveBeenCalledOnce();
+    expect(settlePermissions).not.toHaveBeenCalled();
+
+    await app.close();
+    delete process.env.PLATON_INTERNAL_AUTH_TOKEN;
   });
 });

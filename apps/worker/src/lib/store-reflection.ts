@@ -4,6 +4,8 @@ import { resolveNamespace, type NamespaceParams } from './memory-namespace.js';
 
 export type ReflectionData = {
   sessionId: string;
+  taskSummary?: string;
+  outcomeSummary?: string;
   wentWell: string[];
   wentWrong: string[];
   likelyCauses: string[];
@@ -47,10 +49,14 @@ export const storeReflection = async (
      MERGE (s:Session { sessionKey: $sessionKey })
      ON CREATE SET s.sessionId = $sessionId,
                    s.namespaceId = $namespaceId,
+                   s.taskSummary = $taskSummary,
+                   s.outcomeSummary = $outcomeSummary,
                    s.status = CASE WHEN size($wentWrong) > 0 THEN 'failed' ELSE 'success' END,
                    s.confidence = $confidence,
                    s.createdAt = datetime()
-     ON MATCH SET  s.status = CASE WHEN size($wentWrong) > 0 THEN 'failed' ELSE 'success' END,
+     ON MATCH SET  s.taskSummary = $taskSummary,
+                   s.outcomeSummary = $outcomeSummary,
+                   s.status = CASE WHEN size($wentWrong) > 0 THEN 'failed' ELSE 'success' END,
                    s.confidence = $confidence,
                    s.updatedAt = datetime()
      MERGE (ns)-[:HAS_SESSION]->(s)`,
@@ -58,6 +64,8 @@ export const storeReflection = async (
       namespaceId: ns.namespaceId,
       sessionKey,
       sessionId: reflection.sessionId,
+      taskSummary: reflection.taskSummary ?? null,
+      outcomeSummary: reflection.outcomeSummary ?? null,
       wentWrong: reflection.wentWrong,
       confidence: reflection.confidence,
     }

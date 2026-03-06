@@ -6,8 +6,8 @@ export const dumpSession = async (
   context: ToolContext
 ) => {
   const payload = {
-    agentId: context.agentId,
     agentKind: context.agentKind,
+    agentId: context.agentId,
     sessionId: args.sessionId,
     inputContextSummary: args.inputContextSummary,
     tenantId: args.tenantId,
@@ -31,14 +31,25 @@ export const dumpSession = async (
     };
   }
 
+  if (!context.accessToken) {
+    return {
+      content: [{ type: "text" as const, text: "Payment Required: missing Bearer token on MCP transport" }],
+      isError: true,
+    };
+  }
+
+  if (!context.internalAuthToken) {
+    return {
+      content: [{ type: "text" as const, text: "Server misconfiguration: missing PLATON_INTERNAL_AUTH_TOKEN" }],
+      isError: true,
+    };
+  }
+
   try {
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
-      "x-platon-subscriber-id": context.subscriberId,
-    };
-
-    if (context.paymentToken) {
-      headers["payment-signature"] = context.paymentToken;
+      "payment-signature": context.accessToken,
+      "x-platon-internal-auth": context.internalAuthToken,
     }
 
     const response = await fetch(`${context.apiBaseUrl}/sessions`, {

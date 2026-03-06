@@ -1,153 +1,146 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { callMemoryTool, listMemoryTools } from '../src/server.js';
+import {
+  listMemoryTools,
+  registerMemoryTools,
+} from "../src/server.js";
 
-describe('MCP Server', () => {
+describe("MCP Server", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
     vi.unstubAllEnvs();
     vi.restoreAllMocks();
   });
 
-  it('lists the paid namespace-aware tools', () => {
+  it("lists namespace-aware tools without requiring paymentToken in tool arguments", () => {
     const tools = listMemoryTools();
 
     expect(tools.map((tool) => tool.name)).toEqual([
-      'memory.dump_session',
-      'memory.retrieve_context',
-      'memory.get_similar_failures',
+      "memory.dump_session",
+      "memory.retrieve_context",
+      "memory.get_similar_failures",
     ]);
-    expect(tools[0]?.inputSchema.required).toContain('paymentToken');
-    expect(tools[0]?.inputSchema.required).toContain('agentKind');
-    expect(tools[0]?.inputSchema.required).toContain('agentId');
+    expect(tools[0]?.inputSchema.required).not.toContain("paymentToken");
+    expect(tools[0]?.inputSchema.required).toContain("agentKind");
+    expect(tools[0]?.inputSchema.required).toContain("agentId");
   });
 
-  it('rejects unauthenticated tool calls', async () => {
-    const verifyPayment = vi.fn();
+  it("registers all memory tools through Nevermined MCP attach with 1 credit each", () => {
+    const registerTool = vi.fn();
+    const attach = vi.fn().mockReturnValue({ registerTool });
+    const configure = vi.fn();
 
-    const result = await callMemoryTool(
+    registerMemoryTools(
+      {} as never,
       {
-        name: 'memory.retrieve_context',
-        arguments: {
-          agentKind: 'support-agent',
-          agentId: 'agent-abc',
-          query: 'redis failover',
-        },
-      },
-      { verifyPayment }
-    );
-
-    expect(result.isError).toBe(true);
-    expect(result.content[0]?.text).toContain('missing x402 payment token');
-    expect(verifyPayment).not.toHaveBeenCalled();
-  });
-
-  it('allows local Codex development calls when a local subscriber env is configured', async () => {
-    vi.stubEnv('PLATON_LOCAL_DEV_SUBSCRIBER_ID', 'local-codex');
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          results: [],
-        }),
-        {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        }
-      )
-    );
-    vi.stubGlobal('fetch', fetchMock);
-
-    const result = await callMemoryTool(
-      {
-        name: 'memory.retrieve_context',
-        arguments: {
-          agentKind: 'support-agent',
-          agentId: 'agent-abc',
-          query: 'redis failover',
-        },
-      },
-      {
-        apiBaseUrl: 'https://memory.example',
+        apiBaseUrl: "https://memory.example",
+        paymentsMcp: { attach, configure },
       }
     );
 
-    expect(result.isError).not.toBe(true);
-    expect(fetchMock).toHaveBeenCalledOnce();
+    expect(configure).toHaveBeenCalledOnce();
+    expect(attach).toHaveBeenCalledOnce();
+    expect(registerTool).toHaveBeenCalledTimes(3);
+    expect(registerTool).toHaveBeenNthCalledWith(
+      1,
+      "memory.dump_session",
+      expect.any(Object),
+      expect.any(Function),
+      expect.objectContaining({ credits: 1n })
+    );
+    expect(registerTool).toHaveBeenNthCalledWith(
+      2,
+      "memory.retrieve_context",
+      expect.any(Object),
+      expect.any(Function),
+      expect.objectContaining({ credits: 1n })
+    );
+    expect(registerTool).toHaveBeenNthCalledWith(
+      3,
+      "memory.get_similar_failures",
+      expect.any(Object),
+      expect.any(Function),
+      expect.objectContaining({ credits: 1n })
+    );
   });
 
-  it('forwards paid dump_session calls through the namespace-aware MCP surface', async () => {
+  it("forwards dump_session calls to the API with internal auth header and token-derived payment signature", async () => {
+    const registerTool = vi.fn();
     const fetchMock = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ id: 'session-row-1' }), {
+      new Response(JSON.stringify({ id: "session-row-1" }), {
         status: 201,
-        headers: { 'Content-Type': 'application/json' },
+        headers: { "Content-Type": "application/json" },
       })
     );
-    vi.stubGlobal('fetch', fetchMock);
+    vi.stubGlobal("fetch", fetchMock);
 
-    const verifyPayment = vi.fn().mockResolvedValue({
-      valid: true,
-      subscriberId: 'sub-001',
-    });
-
-    const result = await callMemoryTool(
+    registerMemoryTools(
+      {} as never,
       {
-        name: 'memory.dump_session',
-        arguments: {
-          paymentToken: 'token-123',
-          agentKind: 'support-agent',
-          agentId: 'agent-abc',
-          sessionId: 'session-123',
-          task: { kind: 'incident', summary: 'Investigate Redis timeout' },
-          outcome: { status: 'failed', summary: 'Redis reads failed during failover' },
-          errors: [{ message: 'ETIMEDOUT' }],
+        apiBaseUrl: "https://memory.example",
+        internalAuthToken: "internal-secret",
+        paymentsMcp: {
+          configure: vi.fn(),
+          attach: vi.fn().mockReturnValue({ registerTool }),
         },
-      },
-      {
-        verifyPayment,
-        apiBaseUrl: 'https://memory.example',
       }
     );
 
+    const dumpHandler = registerTool.mock.calls.find(([name]) => name === "memory.dump_session")?.[2];
+    expect(dumpHandler).toBeTypeOf("function");
+
+    const result = await dumpHandler(
+      {
+        agentKind: "support-agent",
+        agentId: "agent-abc",
+        sessionId: "session-123",
+        task: { kind: "incident", summary: "Investigate Redis timeout" },
+        outcome: { status: "failed", summary: "Redis reads failed during failover" },
+      },
+      { requestInfo: { headers: { authorization: "Bearer token-123" } } }
+    );
+
     expect(result.isError).not.toBe(true);
-    expect(verifyPayment).toHaveBeenCalledWith('token-123');
-    expect(fetchMock).toHaveBeenCalledOnce();
     expect(fetchMock).toHaveBeenCalledWith(
-      'https://memory.example/sessions',
+      "https://memory.example/sessions",
       expect.objectContaining({
-        method: 'POST',
+        method: "POST",
         headers: expect.objectContaining({
-          'Content-Type': 'application/json',
-          'payment-signature': 'token-123',
+          "Content-Type": "application/json",
+          "payment-signature": "token-123",
+          "x-platon-internal-auth": "internal-secret",
         }),
       })
     );
-
-    const [, request] = fetchMock.mock.calls[0];
-    expect(JSON.parse(request.body)).toMatchObject({
-      agentKind: 'support-agent',
-      agentId: 'agent-abc',
-      sessionId: 'session-123',
-      task: { kind: 'incident', summary: 'Investigate Redis timeout' },
-      outcome: { status: 'failed', summary: 'Redis reads failed during failover' },
-    });
   });
 
-  it('rejects legacy content-only dump_session (requires structured task and outcome)', async () => {
-    vi.stubEnv('PLATON_LOCAL_DEV_SUBSCRIBER_ID', 'local-codex');
+  it("rejects legacy content-only dump_session (requires structured task and outcome)", async () => {
+    const registerTool = vi.fn();
     const fetchMock = vi.fn();
-    vi.stubGlobal('fetch', fetchMock);
+    vi.stubGlobal("fetch", fetchMock);
 
-    const result = await callMemoryTool(
+    registerMemoryTools(
+      {} as never,
       {
-        name: 'memory.dump_session',
-        arguments: {
-          agentKind: 'support-agent',
-          agentId: 'agent-abc',
-          sessionId: 'session-123',
-          content: 'Raw session log text only',
+        apiBaseUrl: "https://memory.example",
+        paymentsMcp: {
+          configure: vi.fn(),
+          attach: vi.fn().mockReturnValue({ registerTool }),
         },
+      }
+    );
+
+    const dumpHandler = registerTool.mock.calls.find(([name]) => name === "memory.dump_session")?.[2];
+    expect(dumpHandler).toBeTypeOf("function");
+
+    const result = await dumpHandler(
+      {
+        agentKind: "support-agent",
+        agentId: "agent-abc",
+        sessionId: "session-123",
+        content: "Raw session log text only",
       },
-      { apiBaseUrl: 'https://memory.example' }
+      { requestInfo: { headers: { authorization: "Bearer token-123" } } }
     );
 
     expect(result.isError).toBe(true);
@@ -155,115 +148,73 @@ describe('MCP Server', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it('forwards full canonical session payload (sessionPayloadSchema fields) to API', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ id: 'session-row-2', status: 'queued' }), {
-        status: 201,
-        headers: { 'Content-Type': 'application/json' },
-      })
-    );
-    vi.stubGlobal('fetch', fetchMock);
-    const verifyPayment = vi.fn().mockResolvedValue({
-      valid: true,
-      subscriberId: 'sub-002',
-    });
-
-    const result = await callMemoryTool(
-      {
-        name: 'memory.dump_session',
-        arguments: {
-          paymentToken: 'token-456',
-          agentKind: 'support-agent',
-          agentId: 'agent-xyz',
-          sessionId: 'session-456',
-          inputContextSummary: 'Prior run notes and escalation context.',
-          tenantId: 'tenant-1',
-          task: { kind: 'support-ticket', summary: 'Investigate failed order sync' },
-          outcome: { status: 'partial', summary: 'Sync partially completed' },
-          tools: [{ name: 'shopify-api', category: 'api' }],
-          events: [{ type: 'tool_call', summary: 'Fetched order details' }],
-          artifacts: [{ kind: 'log', uri: 's3://bucket/log.txt', summary: 'Request log' }],
-          errors: [{ message: 'ETIMEDOUT', code: 'TIMEOUT', retryable: true }],
-          humanFeedback: { rating: 4, summary: 'Diagnosis was correct.' },
-        },
-      },
-      { verifyPayment, apiBaseUrl: 'https://memory.example' }
-    );
-
-    expect(result.isError).not.toBe(true);
-    expect(fetchMock).toHaveBeenCalledOnce();
-    const [, request] = fetchMock.mock.calls[0];
-    const body = JSON.parse(request.body);
-    expect(body).toMatchObject({
-      agentKind: 'support-agent',
-      agentId: 'agent-xyz',
-      sessionId: 'session-456',
-      inputContextSummary: 'Prior run notes and escalation context.',
-      tenantId: 'tenant-1',
-      task: { kind: 'support-ticket', summary: 'Investigate failed order sync' },
-      outcome: { status: 'partial', summary: 'Sync partially completed' },
-      tools: [{ name: 'shopify-api', category: 'api' }],
-      events: [{ type: 'tool_call', summary: 'Fetched order details' }],
-      artifacts: [{ kind: 'log', uri: 's3://bucket/log.txt', summary: 'Request log' }],
-      errors: [{ message: 'ETIMEDOUT', code: 'TIMEOUT', retryable: true }],
-      humanFeedback: { rating: 4, summary: 'Diagnosis was correct.' },
-    });
-  });
-
-  it('forwards paid retrieval calls with namespace-aware inputs', async () => {
+  it("forwards retrieval calls with namespace-aware inputs and internal auth", async () => {
+    const registerTool = vi.fn();
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(
         JSON.stringify({
           results: [
             {
-              title: 'Retry Redis reads after failover',
-              summary: 'A prior failure recovered after a bounded retry loop.',
+              title: "Retry Redis reads after failover",
+              summary: "A prior failure recovered after a bounded retry loop.",
               confidence: 0.83,
             },
           ],
         }),
         {
           status: 200,
-          headers: { 'Content-Type': 'application/json' },
+          headers: { "Content-Type": "application/json" },
         }
       )
     );
-    vi.stubGlobal('fetch', fetchMock);
+    vi.stubGlobal("fetch", fetchMock);
 
-    const result = await callMemoryTool(
+    registerMemoryTools(
+      {} as never,
       {
-        name: 'memory.retrieve_context',
-        arguments: {
-          paymentToken: 'token-456',
-          agentKind: 'support-agent',
-          agentId: 'agent-abc',
-          query: 'redis failover',
-          limit: 3,
-          filters: {
-            statuses: ['failed'],
-            toolNames: ['redis-cli'],
-          },
+        apiBaseUrl: "https://memory.example",
+        internalAuthToken: "internal-secret",
+        paymentsMcp: {
+          configure: vi.fn(),
+          attach: vi.fn().mockReturnValue({ registerTool }),
         },
-      },
-      {
-        verifyPayment: vi.fn().mockResolvedValue({ valid: true, subscriberId: 'sub-001' }),
-        apiBaseUrl: 'https://memory.example',
       }
     );
 
+    const retrieveHandler = registerTool.mock.calls.find(([name]) => name === "memory.retrieve_context")?.[2];
+    expect(retrieveHandler).toBeTypeOf("function");
+
+    const result = await retrieveHandler(
+      {
+        agentKind: "support-agent",
+        agentId: "agent-abc",
+        query: "redis failover",
+        limit: 3,
+        filters: {
+          statuses: ["failed"],
+          toolNames: ["redis-cli"],
+        },
+      },
+      { requestInfo: { headers: { authorization: "Bearer token-456" } } }
+    );
+
     expect(result.isError).not.toBe(true);
-    expect(result.content[0]?.text).toContain('Retry Redis reads after failover');
+    expect(result.content[0]?.text).toContain("Retry Redis reads after failover");
 
     const [, request] = fetchMock.mock.calls[0];
     expect(JSON.parse(request.body)).toMatchObject({
-      agentKind: 'support-agent',
-      agentId: 'agent-abc',
-      query: 'redis failover',
+      agentKind: "support-agent",
+      agentId: "agent-abc",
+      query: "redis failover",
       limit: 3,
       filters: {
-        statuses: ['failed'],
-        toolNames: ['redis-cli'],
+        statuses: ["failed"],
+        toolNames: ["redis-cli"],
       },
+    });
+    expect(request.headers).toMatchObject({
+      "payment-signature": "token-456",
+      "x-platon-internal-auth": "internal-secret",
     });
   });
 });

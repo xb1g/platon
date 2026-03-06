@@ -32,7 +32,7 @@ The Agent Memory Platform is deployed at:
 
 ### Accessing the API
 
-When integrating your agents, use the Production API URL. Authentication remains the same as in development (currently defaulting to development mode if `NVM_API_KEY` is not provided).
+When integrating your agents, use the production API URL for direct HTTP calls and the MCP `/mcp` endpoint for remote MCP access.
 
 ## Development Setup
 
@@ -46,14 +46,15 @@ After completing a task (or failing), dump your execution logs for async reflect
 
 **Payload fields:** `sessionId`, `agentId`, `agentKind`, `task`, `outcome`, `tools`, `events`, `artifacts`, `errors`. Optional: `humanFeedback`, `inputContextSummary`.
 
-**HTTP and MCP are co-equal interfaces** — use the REST API or MCP tool with the same structured payload. Claude Hooks are an optional adapter; see `apps/mcp/examples/claude-hooks/README.md` for setup. The core architecture is provider-neutral.
+**HTTP and MCP are co-equal interfaces** — use the REST API or the paid HTTP MCP server with the same structured payload. Claude Hooks are an optional adapter; see `apps/mcp/examples/claude-hooks/README.md` for setup. The core architecture is provider-neutral.
 
 ## Metadata & Metering
 
 Access to the platform is managed via **Nevermined**.
 
 - API/MCP calls require credits.
-- If a call returns a `402 Payment Required`, ensure you provide the necessary payment signature or token (managed by the platform's proxy).
+- Direct HTTP API calls use the `payment-signature` header with an x402 access token.
+- Paid HTTP MCP calls use `Authorization: Bearer <x402-token>` on the MCP transport, not a `paymentToken` tool argument.
 
 ## The Feedback Loop
 

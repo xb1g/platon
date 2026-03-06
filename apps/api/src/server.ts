@@ -20,6 +20,45 @@ export const buildServer = async (options: { paywall?: PaywallPluginOptions } = 
   await server.register(sessionRoutes, { prefix: "/sessions" });
   await server.register(retrieveRoutes, { prefix: "/retrieve" });
 
+  server.get("/openapi.json", async () => {
+    return {
+      openapi: "3.1.0",
+      info: {
+        title: "Platon Memory API",
+        version: "0.1.0",
+        description: "Paid session ingestion and retrieval API for graph-backed agent memory."
+      },
+      paths: {
+        "/sessions": {
+          post: {
+            operationId: "dumpSession",
+            summary: "Store a session for later reflection",
+            requestBody: {
+              required: true
+            },
+            responses: {
+              "201": { description: "Session accepted" },
+              "402": { description: "Payment required" }
+            }
+          }
+        },
+        "/retrieve": {
+          post: {
+            operationId: "retrieveContext",
+            summary: "Retrieve relevant memory context",
+            requestBody: {
+              required: true
+            },
+            responses: {
+              "200": { description: "Relevant context returned" },
+              "402": { description: "Payment required" }
+            }
+          }
+        }
+      }
+    };
+  });
+
   server.get("/health", async () => {
     return { status: "ok" };
   });
