@@ -1,5 +1,15 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { buildServer } from "../src/server.js";
+
+const { ensureSessionTable, insertRawSession } = vi.hoisted(() => ({
+  ensureSessionTable: vi.fn().mockResolvedValue(undefined),
+  insertRawSession: vi.fn().mockResolvedValue({ id: "stored-session-row-123" })
+}));
+
+vi.mock("../src/lib/session-store.js", () => ({
+  ensureSessionTable,
+  insertRawSession
+}));
 
 const paywallConfig = {
   apiKey: "sandbox:test-key",
@@ -38,6 +48,10 @@ const buildPaidServer = async () => {
 
   return { app, redeemCreditsFromRequest };
 };
+
+afterEach(() => {
+  vi.clearAllMocks();
+});
 
 describe("Sessions API", () => {
   it("requires verified auth context for protected requests", async () => {
@@ -96,12 +110,21 @@ describe("Sessions API", () => {
 
     expect(response.statusCode).toBe(201);
     expect(response.json()).toEqual({
-      id: "mock-id",
+      id: "stored-session-row-123",
       status: "queued",
       subscriberId: "subscriber-runtime",
       agentId: "agent-runtime",
       agentKind: "support-agent"
     });
+    expect(ensureSessionTable).toHaveBeenCalledOnce();
+    expect(insertRawSession).toHaveBeenCalledWith(
+      expect.objectContaining({
+        subscriberId: "subscriber-runtime",
+        agentKind: "support-agent",
+        agentId: "agent-runtime",
+        sessionId: "session-123"
+      })
+    );
 
     await app.close();
   });
