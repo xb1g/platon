@@ -12,17 +12,22 @@
   },
   "dependencies": {
     "autoprefixer": "^10.4.27",
+    "bullmq": "^5.34.10",
     "clsx": "^2.1.1",
     "framer-motion": "^12.35.0",
+    "ioredis": "^5.4.2",
     "lucide-react": "^0.577.0",
+    "neo4j-driver": "^5.27.0",
     "next": "^15.1.0",
     "postcss": "^8.5.8",
+    "pg": "^8.13.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "recharts": "^3.7.0",
     "tailwindcss": "^4.2.1"
   },
   "devDependencies": {
+    "@types/pg": "^8.15.5",
     "@tailwindcss/postcss": "^4.2.1",
     "@types/react": "^19.0.2",
     "@types/react-dom": "^19.0.2"
