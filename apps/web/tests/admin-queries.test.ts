@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  getAdminDatabaseData,
   getAdminOverviewData,
   getAdminSessionsPageData,
   normalizeAdminError,
@@ -106,5 +107,60 @@ describe("admin queries", () => {
       "database offline",
     );
     expect(normalizeAdminError("weird", "fallback")).toBe("fallback");
+  });
+
+  it("keeps the database admin view available when memory_vectors is absent", async () => {
+    const getTableSnapshot = vi
+      .fn()
+      .mockResolvedValueOnce({
+        name: "raw_sessions",
+        rowCount: 4,
+        columns: ["id"],
+        rows: [{ id: "raw-1" }],
+      })
+      .mockResolvedValueOnce({
+        name: "retrieval_feedback",
+        rowCount: 2,
+        columns: ["id"],
+        rows: [{ id: 1 }],
+      })
+      .mockRejectedValueOnce(new Error('relation "memory_vectors" does not exist'));
+
+    const result = await getAdminDatabaseData({
+      postgres: {
+        getTableSnapshot,
+      },
+    });
+
+    expect(getTableSnapshot).toHaveBeenNthCalledWith(1, "raw_sessions", 20);
+    expect(getTableSnapshot).toHaveBeenNthCalledWith(2, "retrieval_feedback", 20);
+    expect(getTableSnapshot).toHaveBeenNthCalledWith(3, "memory_vectors", 20);
+    expect(result.tables).toEqual([
+      {
+        name: "raw_sessions",
+        rowCount: 4,
+        columns: ["id"],
+        rows: [{ id: "raw-1" }],
+      },
+      {
+        name: "retrieval_feedback",
+        rowCount: 2,
+        columns: ["id"],
+        rows: [{ id: 1 }],
+      },
+      {
+        name: "memory_vectors",
+        rowCount: 0,
+        columns: [
+          "memory_id",
+          "namespace_id",
+          "memory_type",
+          "status",
+          "retrieval_status",
+          "updated_at",
+        ],
+        rows: [],
+      },
+    ]);
   });
 });

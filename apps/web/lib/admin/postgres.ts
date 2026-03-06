@@ -198,7 +198,7 @@ const TABLE_CONFIG: Record<AdminTableName, { columns: string[] }> = {
       "namespace_id",
       "memory_type",
       "status",
-      "created_at",
+      "retrieval_status",
       "updated_at",
     ],
   },

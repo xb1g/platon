@@ -106,6 +106,21 @@ export type AdminGraphData = {
 };
 
 type SearchParamsInput = Record<string, string | string[] | undefined>;
+type PostgresLikeError = Error & { code?: string };
+
+const EMPTY_MEMORY_VECTORS_TABLE: AdminTableSnapshot = {
+  name: "memory_vectors",
+  rowCount: 0,
+  columns: [
+    "memory_id",
+    "namespace_id",
+    "memory_type",
+    "status",
+    "retrieval_status",
+    "updated_at",
+  ],
+  rows: [],
+};
 
 const getDeps = (deps?: AdminDeps) => ({
   postgres: {
@@ -135,6 +150,15 @@ const getDeps = (deps?: AdminDeps) => ({
 
 export const normalizeAdminError = (error: unknown, fallback: string) =>
   error instanceof Error && error.message ? error.message : fallback;
+
+const isMissingRelationError = (error: unknown, relationName: string) => {
+  const candidate = error as PostgresLikeError | undefined;
+  return (
+    candidate?.code === "42P01" ||
+    (candidate instanceof Error &&
+      candidate.message.includes(`relation "${relationName}" does not exist`))
+  );
+};
 
 const parseString = (value: string | string[] | undefined) =>
   typeof value === "string" && value.length > 0 ? value : undefined;
@@ -310,7 +334,13 @@ export const getAdminDatabaseData = async (
   const tables = await Promise.all([
     resolved.postgres.getTableSnapshot("raw_sessions", 20),
     resolved.postgres.getTableSnapshot("retrieval_feedback", 20),
-    resolved.postgres.getTableSnapshot("memory_vectors", 20),
+    resolved.postgres.getTableSnapshot("memory_vectors", 20).catch((error) => {
+      if (isMissingRelationError(error, "memory_vectors")) {
+        return EMPTY_MEMORY_VECTORS_TABLE;
+      }
+
+      throw error;
+    }),
   ]);
 
   return { tables };
