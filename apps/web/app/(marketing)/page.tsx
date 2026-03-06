@@ -487,11 +487,11 @@ export default function LandingPage() {
               transition={{ duration: 0.7, delay: 0.4 }}
               className="text-5xl sm:text-6xl md:text-7xl font-light text-white leading-[1.05] tracking-tight mb-6"
             >
-              AI Agents for
+              Make Your Agents
               <br />
-              Memory
+              Learn From
               <br />
-              Optimization.
+              Mistakes.
             </motion.h1>
 
             {/* Subtitle */}

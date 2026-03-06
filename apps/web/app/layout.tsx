@@ -2,7 +2,7 @@ import "./globals.css";
 
 export const metadata = {
   title: "Platon — Agent Memory Platform",
-  description: "AI Agents for Memory Optimization",
+  description: "Make Your AI Learn From Mistakes",
 };
 
 export default function RootLayout({
