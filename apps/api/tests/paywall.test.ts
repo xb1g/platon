@@ -220,4 +220,42 @@ describe("paywallPlugin", () => {
     await app.close();
     delete process.env.PLATON_INTERNAL_AUTH_TOKEN;
   });
+
+  it("allows trusted local bypass when Nevermined config is missing", async () => {
+    process.env.PLATON_INTERNAL_AUTH_TOKEN = "internal-secret";
+    process.env.PLATON_ALLOW_INTERNAL_AUTH_BYPASS = "1";
+    const app = Fastify();
+
+    await app.register(paywallPlugin);
+    app.post("/sessions", async (request) => ({
+      auth: request.paymentContext?.authContext ?? null
+    }));
+    await app.ready();
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/sessions",
+      headers: {
+        "x-platon-internal-auth": "internal-secret"
+      },
+      payload: {
+        agentId: "agent-1",
+        agentKind: "support-agent"
+      }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({
+      auth: {
+        subscriberId: "local-smoke-subscriber",
+        agentId: "agent-1",
+        agentKind: "support-agent",
+        planId: "local-internal-bypass"
+      }
+    });
+
+    await app.close();
+    delete process.env.PLATON_INTERNAL_AUTH_TOKEN;
+    delete process.env.PLATON_ALLOW_INTERNAL_AUTH_BYPASS;
+  });
 });

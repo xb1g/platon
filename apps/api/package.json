@@ -9,6 +9,8 @@
     "register:nevermined": "tsx src/scripts/register-nevermined-agent.ts",
     "verify:nevermined": "tsx src/scripts/verify-nevermined-smoke.ts",
     "test": "vitest run",
+    "test:e2e:smoke": "RUN_LIVE_E2E_SMOKE=1 vitest run -- tests/e2e/session-retrieval.e2e.test.ts",
+    "smoke:e2e": "tsx src/scripts/run-e2e-smoke.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "start": "node dist/src/server.js"
   },

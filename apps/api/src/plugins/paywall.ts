@@ -100,6 +100,29 @@ const isTrustedInternalRequest = (request: FastifyRequest) => {
   return getInternalAuthHeader(request) === expected;
 };
 
+const isLocalInternalBypassEnabled = () => process.env.PLATON_ALLOW_INTERNAL_AUTH_BYPASS === "1";
+
+const deriveInternalBypassAuthContext = (request: FastifyRequest): PaymentAuthContext | undefined => {
+  const body = request.body;
+  if (!body || typeof body !== "object") {
+    return undefined;
+  }
+
+  const requestAgentId = "agentId" in body && typeof body.agentId === "string" ? body.agentId : undefined;
+  const requestAgentKind = "agentKind" in body && typeof body.agentKind === "string" ? body.agentKind : undefined;
+
+  if (!requestAgentId || !requestAgentKind) {
+    return undefined;
+  }
+
+  return {
+    subscriberId: process.env.PLATON_LOCAL_SUBSCRIBER_ID ?? "local-smoke-subscriber",
+    agentId: requestAgentId,
+    agentKind: requestAgentKind,
+    planId: "local-internal-bypass"
+  };
+};
+
 const encodeHeaderValue = (value: unknown) =>
   Buffer.from(JSON.stringify(value)).toString("base64");
 
@@ -170,14 +193,43 @@ const createPaymentsClient = (config: NeverminedConfig): PaymentsClient =>
 
 export const paywallPlugin = fp<PaywallPluginOptions>(async (server, options: PaywallPluginOptions) => {
   const config = options.config ?? loadNeverminedConfig();
+  const protectedRoutes = options.protectedRoutes ?? defaultProtectedRoutes;
 
   if (!config) {
     server.log.warn("Nevermined configuration missing. Paywall is DISABLED.");
+    server.addHook("preHandler", async (request) => {
+      const routeKey = getRouteKey(request);
+      if (!protectedRoutes[routeKey]) {
+        return;
+      }
+
+      if (!isLocalInternalBypassEnabled() || !isTrustedInternalRequest(request)) {
+        return;
+      }
+
+      const authContext = deriveInternalBypassAuthContext(request);
+      if (!authContext) {
+        return;
+      }
+
+      request.paymentContext = {
+        authContext,
+        credits: 0n,
+        paymentRequired: buildPaymentRequired(authContext.planId, {
+          endpoint: buildRequestedUrl(request),
+          agentId: authContext.agentId,
+          environment: "sandbox",
+          httpVerb: request.method,
+          scheme: "nvm:erc4337"
+        }),
+        skipSettlement: true,
+        token: "local-internal-bypass"
+      };
+    });
     return;
   }
 
   const payments = options.payments ?? createPaymentsClient(config);
-  const protectedRoutes = options.protectedRoutes ?? defaultProtectedRoutes;
 
   server.addHook("preHandler", async (request, reply) => {
     const routeKey = getRouteKey(request);

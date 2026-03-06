@@ -27,3 +27,12 @@ export const enqueueReflectionJob = async (job: ReflectionJob) => {
   const queue = getReflectionQueue();
   return queue.add(REFLECTION_JOB_NAME, job);
 };
+
+export const closeReflectionQueue = async () => {
+  if (!reflectionQueue) {
+    return;
+  }
+
+  await reflectionQueue.close();
+  reflectionQueue = null;
+};

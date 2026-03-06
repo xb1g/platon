@@ -11,3 +11,12 @@ export const getRedisConnection = () => {
 
   return redisConnection;
 };
+
+export const closeRedisConnection = async () => {
+  if (!redisConnection) {
+    return;
+  }
+
+  await redisConnection.quit();
+  redisConnection = null;
+};
