@@ -132,6 +132,84 @@ describe('MCP Server', () => {
     });
   });
 
+  it('rejects legacy content-only dump_session (requires structured task and outcome)', async () => {
+    vi.stubEnv('PLATON_LOCAL_DEV_SUBSCRIBER_ID', 'local-codex');
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await callMemoryTool(
+      {
+        name: 'memory.dump_session',
+        arguments: {
+          agentKind: 'support-agent',
+          agentId: 'agent-abc',
+          sessionId: 'session-123',
+          content: 'Raw session log text only',
+        },
+      },
+      { apiBaseUrl: 'https://memory.example' }
+    );
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0]?.text).toMatch(/invalid|validation|required/i);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('forwards full canonical session payload (sessionPayloadSchema fields) to API', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ id: 'session-row-2', status: 'queued' }), {
+        status: 201,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    const verifyPayment = vi.fn().mockResolvedValue({
+      valid: true,
+      subscriberId: 'sub-002',
+    });
+
+    const result = await callMemoryTool(
+      {
+        name: 'memory.dump_session',
+        arguments: {
+          paymentToken: 'token-456',
+          agentKind: 'support-agent',
+          agentId: 'agent-xyz',
+          sessionId: 'session-456',
+          inputContextSummary: 'Prior run notes and escalation context.',
+          tenantId: 'tenant-1',
+          task: { kind: 'support-ticket', summary: 'Investigate failed order sync' },
+          outcome: { status: 'partial', summary: 'Sync partially completed' },
+          tools: [{ name: 'shopify-api', category: 'api' }],
+          events: [{ type: 'tool_call', summary: 'Fetched order details' }],
+          artifacts: [{ kind: 'log', uri: 's3://bucket/log.txt', summary: 'Request log' }],
+          errors: [{ message: 'ETIMEDOUT', code: 'TIMEOUT', retryable: true }],
+          humanFeedback: { rating: 4, summary: 'Diagnosis was correct.' },
+        },
+      },
+      { verifyPayment, apiBaseUrl: 'https://memory.example' }
+    );
+
+    expect(result.isError).not.toBe(true);
+    expect(fetchMock).toHaveBeenCalledOnce();
+    const [, request] = fetchMock.mock.calls[0];
+    const body = JSON.parse(request.body);
+    expect(body).toMatchObject({
+      agentKind: 'support-agent',
+      agentId: 'agent-xyz',
+      sessionId: 'session-456',
+      inputContextSummary: 'Prior run notes and escalation context.',
+      tenantId: 'tenant-1',
+      task: { kind: 'support-ticket', summary: 'Investigate failed order sync' },
+      outcome: { status: 'partial', summary: 'Sync partially completed' },
+      tools: [{ name: 'shopify-api', category: 'api' }],
+      events: [{ type: 'tool_call', summary: 'Fetched order details' }],
+      artifacts: [{ kind: 'log', uri: 's3://bucket/log.txt', summary: 'Request log' }],
+      errors: [{ message: 'ETIMEDOUT', code: 'TIMEOUT', retryable: true }],
+      humanFeedback: { rating: 4, summary: 'Diagnosis was correct.' },
+    });
+  });
+
   it('forwards paid retrieval calls with namespace-aware inputs', async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(

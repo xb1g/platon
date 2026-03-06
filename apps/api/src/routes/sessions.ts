@@ -1,6 +1,8 @@
 import { FastifyPluginAsync } from "fastify";
 import { z } from "zod";
 import { sessionPayloadSchema } from "@memory/shared";
+import { enqueueReflectionJob } from "../lib/reflection-queue.js";
+import { ensureSessionTable, insertRawSession, markReflectionQueued } from "../lib/session-store.js";
 import { ensureAgentIdentityMatches, getVerifiedAuthContext } from "../lib/verified-auth.js";
 
 export const sessionRoutes: FastifyPluginAsync = async (server) => {
@@ -17,10 +19,28 @@ export const sessionRoutes: FastifyPluginAsync = async (server) => {
         return reply;
       }
 
-      // TODO: Save to Postgres and enqueue job
+      await ensureSessionTable();
+
+      const storedSession = await insertRawSession({
+        subscriberId: authContext.subscriberId,
+        agentKind: authContext.agentKind,
+        agentId: authContext.agentId,
+        sessionId: data.sessionId,
+        payload: data
+      });
+
+      await enqueueReflectionJob({
+        rawSessionId: storedSession.id,
+        subscriberId: authContext.subscriberId,
+        agentId: authContext.agentId,
+        agentKind: authContext.agentKind
+      });
+
+      await markReflectionQueued(storedSession.id);
+
       return reply.status(201).send({
-        id: "mock-id",
-        status: "queued",
+        id: storedSession.id,
+        status: storedSession.reflection_status ?? "queued",
         subscriberId: authContext.subscriberId,
         agentId: authContext.agentId,
         agentKind: authContext.agentKind

@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import { resolve, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -201,6 +204,40 @@ describe("retrievalRequestSchema", () => {
     });
 
     expect(result.success).toBe(false);
+  });
+});
+
+describe("agent integration docs", () => {
+  const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
+  const DOC_FILES = [
+    ".cursor/rules/platon-agent.mdc",
+    "agent.md",
+    "apps/web/docs/INTEGRATION.md",
+    "apps/web/app/(marketing)/page.tsx",
+  ] as const;
+
+  it("does not use deprecated dump_session(sessionId, content) form in docs", () => {
+    const deprecatedPatterns = [
+      /dump_session\s*\(\s*sessionId\s*,\s*content\s*\)/,
+      /dump_session\s*\(\s*sessionId\s*:\s*string\s*,\s*content\s*:\s*string\s*\)/,
+      /"content"\s*:\s*"JSON string of the full session payload"/,
+    ];
+
+    const violations: string[] = [];
+    for (const rel of DOC_FILES) {
+      const path = resolve(REPO_ROOT, rel);
+      try {
+        const text = readFileSync(path, "utf-8");
+        for (const re of deprecatedPatterns) {
+          if (re.test(text)) {
+            violations.push(`${rel}: matches deprecated pattern ${re.source}`);
+          }
+        }
+      } catch {
+        // File may not exist in all workspaces; skip
+      }
+    }
+    expect(violations).toEqual([]);
   });
 });
 

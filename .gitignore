@@ -13,3 +13,5 @@ coverage
 
 *.pem
 .worktrees
+
+.pnpm-store/*
