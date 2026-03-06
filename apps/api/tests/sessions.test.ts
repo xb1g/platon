@@ -1,22 +1,30 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
-const { poolQueryMock, queueAddMock } = vi.hoisted(() => ({
-  poolQueryMock: vi.fn(),
-  queueAddMock: vi.fn()
-}));
-
-vi.mock("../src/lib/postgres.js", () => ({
-  pool: {
-    query: poolQueryMock
-  }
-}));
-
-vi.mock("bullmq", () => ({
-  Queue: vi.fn(() => ({
-    add: queueAddMock
-  }))
-}));
-
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { buildServer } from "../src/server.js";
+
+const {
+  ensureSessionTable,
+  insertRawSession,
+  markReflectionQueued,
+  enqueueReflectionJob
+} = vi.hoisted(() => ({
+  ensureSessionTable: vi.fn().mockResolvedValue(undefined),
+  insertRawSession: vi.fn().mockResolvedValue({
+    id: "stored-session-row-123",
+    reflection_status: "queued"
+  }),
+  markReflectionQueued: vi.fn().mockResolvedValue(undefined),
+  enqueueReflectionJob: vi.fn().mockResolvedValue({ id: "job-123" })
+}));
+
+vi.mock("../src/lib/session-store.js", () => ({
+  ensureSessionTable,
+  insertRawSession,
+  markReflectionQueued
+}));
+
+vi.mock("../src/lib/reflection-queue.js", () => ({
+  enqueueReflectionJob
+}));
 
 const paywallConfig = {
   apiKey: "sandbox:test-key",
@@ -56,30 +64,11 @@ const buildPaidServer = async () => {
   return { app, redeemCreditsFromRequest };
 };
 
+afterEach(() => {
+  vi.clearAllMocks();
+});
+
 describe("Sessions API", () => {
-  beforeEach(() => {
-    poolQueryMock.mockReset();
-    queueAddMock.mockReset();
-
-    poolQueryMock.mockImplementation(async (queryText: string) => {
-      if (queryText.includes("INSERT INTO raw_sessions")) {
-        return {
-          rows: [
-            {
-              id: "stored-session-123"
-            }
-          ]
-        };
-      }
-
-      return { rows: [] };
-    });
-
-    queueAddMock.mockResolvedValue({
-      id: "job-123"
-    });
-  });
-
   it("requires verified auth context for protected requests", async () => {
     const app = await buildServer();
 
@@ -136,12 +125,21 @@ describe("Sessions API", () => {
 
     expect(response.statusCode).toBe(201);
     expect(response.json()).toEqual({
-      id: "stored-session-123",
+      id: "stored-session-row-123",
       status: "queued",
       subscriberId: "subscriber-runtime",
       agentId: "agent-runtime",
       agentKind: "support-agent"
     });
+    expect(ensureSessionTable).toHaveBeenCalledOnce();
+    expect(insertRawSession).toHaveBeenCalledWith(
+      expect.objectContaining({
+        subscriberId: "subscriber-runtime",
+        agentKind: "support-agent",
+        agentId: "agent-runtime",
+        sessionId: "session-123"
+      })
+    );
 
     await app.close();
   });
@@ -149,44 +147,36 @@ describe("Sessions API", () => {
   it("enqueues a reflection job for the stored session row", async () => {
     const { app } = await buildPaidServer();
 
-    const payload = {
-      tenantId: "tenant-from-body",
-      agentId: "agent-runtime",
-      agentKind: "support-agent",
-      sessionId: "session-123",
-      task: {
-        kind: "support-ticket",
-        summary: "Investigate failed order sync"
-      },
-      outcome: {
-        status: "failed" as const,
-        summary: "Order sync failed due to a missing external identifier"
-      }
-    };
-
     const response = await app.inject({
       method: "POST",
       url: "/sessions",
       headers: {
         "payment-signature": "token-123"
       },
-      payload
+      payload: {
+        tenantId: "tenant-from-body",
+        agentId: "agent-runtime",
+        agentKind: "support-agent",
+        sessionId: "session-123",
+        task: {
+          kind: "support-ticket",
+          summary: "Investigate failed order sync"
+        },
+        outcome: {
+          status: "failed",
+          summary: "Order sync failed due to a missing external identifier"
+        }
+      }
     });
 
     expect(response.statusCode).toBe(201);
-    expect(response.json()).toEqual({
-      id: "stored-session-123",
-      status: "queued",
+    expect(enqueueReflectionJob).toHaveBeenCalledWith({
+      rawSessionId: "stored-session-row-123",
       subscriberId: "subscriber-runtime",
       agentId: "agent-runtime",
       agentKind: "support-agent"
     });
-    expect(queueAddMock).toHaveBeenCalledWith("reflect-session", {
-      rawSessionId: "stored-session-123",
-      subscriberId: "subscriber-runtime",
-      agentId: "agent-runtime",
-      agentKind: "support-agent"
-    });
+    expect(markReflectionQueued).toHaveBeenCalledWith("stored-session-row-123");
 
     await app.close();
   });

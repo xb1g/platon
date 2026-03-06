@@ -2,7 +2,7 @@ import { FastifyPluginAsync } from "fastify";
 import { z } from "zod";
 import { sessionPayloadSchema } from "@memory/shared";
 import { enqueueReflectionJob } from "../lib/reflection-queue.js";
-import { insertRawSession, markReflectionQueued } from "../lib/session-store.js";
+import { ensureSessionTable, insertRawSession, markReflectionQueued } from "../lib/session-store.js";
 import { ensureAgentIdentityMatches, getVerifiedAuthContext } from "../lib/verified-auth.js";
 
 export const sessionRoutes: FastifyPluginAsync = async (server) => {
@@ -18,6 +18,8 @@ export const sessionRoutes: FastifyPluginAsync = async (server) => {
       if (!ensureAgentIdentityMatches(data, authContext, reply)) {
         return reply;
       }
+
+      await ensureSessionTable();
 
       const storedSession = await insertRawSession({
         subscriberId: authContext.subscriberId,
@@ -38,7 +40,7 @@ export const sessionRoutes: FastifyPluginAsync = async (server) => {
 
       return reply.status(201).send({
         id: storedSession.id,
-        status: "queued",
+        status: storedSession.reflection_status ?? "queued",
         subscriberId: authContext.subscriberId,
         agentId: authContext.agentId,
         agentKind: authContext.agentKind
