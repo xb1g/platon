@@ -3,6 +3,7 @@ import { z } from "zod";
 import { retrievalRequestSchema } from "@memory/shared";
 import { resolveNamespace } from "../lib/memory-namespace.js";
 import { getSession } from "../lib/neo4j.js";
+import { shouldFilterRetrievedMemory } from "../lib/security/detect-suspicious-memory.js";
 import { ensureAgentIdentityMatches, getVerifiedAuthContext } from "../lib/verified-auth.js";
 import { getRetrievalFeedbackSummaries } from "../lib/retrieval/feedback-store.js";
 import { graphSearch } from "../lib/retrieval/graph-search.js";
@@ -59,7 +60,10 @@ export const retrieveRoutes: FastifyPluginAsync = async (server) => {
             ...result,
             usefulness: feedbackByMemoryId.get(result.id)
           }));
-        const rankedResults = rankResults(withUsefulness(graphResults), withUsefulness(vectorResults));
+        const rankedResults = rankResults(
+          withUsefulness(graphResults).filter((result) => !shouldFilterRetrievedMemory(result)),
+          withUsefulness(vectorResults).filter((result) => !shouldFilterRetrievedMemory(result))
+        ).filter((result) => !shouldFilterRetrievedMemory(result));
 
         return reply.status(200).send({
           results: rankedResults,
