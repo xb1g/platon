@@ -4,7 +4,7 @@ Developer-facing memory infrastructure for AI agent businesses. Agents dump sess
 
 ## Current Scope
 
-This repository is intentionally scaffolded through **Task 1 only**. It provides a clean monorepo, shared package boundaries, environment conventions, and installable workspace setup. Application code for the API, MCP server, worker, shared schemas, and web dashboard should be added in later tasks.
+The platform now includes the first paid API path for x402-protected memory ingestion and retrieval. The MCP server, worker, and dashboard still have follow-on tasks, but the API package can already advertise payment requirements, verify Nevermined access, and expose verified request identity to downstream handlers.
 
 ## Workspace Layout
 
@@ -20,6 +20,7 @@ This repository is intentionally scaffolded through **Task 1 only**. It provides
 1. Copy `.env.example` to `.env`
 2. Run `pnpm install`
 3. Run `pnpm check:workspace`
+4. Register the API agent and credit plan with `pnpm --filter @memory/api register:nevermined`
 
 ## Local Boot Sequence
 
@@ -38,9 +39,12 @@ Environment configuration is centralized in `.env.example`. Populate the followi
 | `NEO4J_URI`, `NEO4J_USER`, `NEO4J_PASSWORD` | Graph metadata store credentials |
 | `REDIS_URL` | BullMQ queue connection |
 | `MCP_SERVER_HOST`, `MCP_SERVER_PORT` | Host and port for the MCP bridge |
-| `NEVERMINED_RPC_URL`, `NEVERMINED_WALLET_PRIVATE_KEY` | Nevermined metering RPC and key |
+| `NVM_API_KEY`, `NVM_ENVIRONMENT` | Nevermined API key and target environment |
+| `NVM_PLAN_ID`, `NVM_AGENT_ID` | Runtime plan and agent identifiers used in x402 headers |
+| `BUILDER_ADDRESS` | Wallet address that receives plan revenue during registration |
+| `API_PUBLIC_URL` | Public base URL advertised during agent registration |
 
-Refer to `docs/runbooks/nevermined-setup.md` for provider-specific onboarding before using metered endpoints.
+Refer to [docs/runbooks/nevermined-x402-flow.md](/Users/bunyasit/dev/platon/.worktrees/codex-nevermined-x402-engineer-a/docs/runbooks/nevermined-x402-flow.md) for the end-to-end subscriber flow and [docs/runbooks/nevermined-setup.md](/Users/bunyasit/dev/platon/.worktrees/codex-nevermined-x402-engineer-a/docs/runbooks/nevermined-setup.md) for setup details.
 
 ## Tooling
 
