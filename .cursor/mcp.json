@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "platon": {
+      "command": "node",
+      "args": ["apps/mcp/dist/server.js"],
+      "env": {
+        "API_URL": "https://platon.bigf.me/api"
+      }
+    }
+  }
+}

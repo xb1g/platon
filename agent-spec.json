@@ -1,0 +1,63 @@
+{
+  "agent": {
+    "name": "Platon Agent Memory Platform",
+    "description": "A memory layer for AI agents that converts session logs into experience graphs.",
+    "tags": ["memory", "ai-agents", "learning", "graph-database"],
+    "endpoints": [
+      {
+        "POST": "https://platon.bigf.me/api/sessions"
+      },
+      {
+        "POST": "https://platon.bigf.me/api/retrieve"
+      }
+    ]
+  },
+  "plan": {
+    "name": "Platon Starter Plan",
+    "description": "100 credits for memory storage and context retrieval.",
+    "price": 10000000,
+    "tokenAddress": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+    "amountOfCredits": 100,
+    "creditsConfig": {
+      "minCreditsRequired": 1,
+      "minCreditsToCharge": 1,
+      "maxCreditsToCharge": 10
+    }
+  },
+  "tools": [
+    {
+      "name": "memory.dump_session",
+      "description": "Dump a session for reflection and storage",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "sessionId": { "type": "string" },
+          "content": { "type": "string" }
+        },
+        "required": ["sessionId", "content"]
+      }
+    },
+    {
+      "name": "memory.retrieve_context",
+      "description": "Retrieve relevant context for a task",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "query": { "type": "string" }
+        },
+        "required": ["query"]
+      }
+    },
+    {
+      "name": "memory.get_similar_failures",
+      "description": "Find similar past failures",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "error": { "type": "string" }
+        },
+        "required": ["error"]
+      }
+    }
+  ]
+}

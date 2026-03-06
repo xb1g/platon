@@ -1,0 +1,29 @@
+---
+description: Use Platon memory platform for context retrieval and session ingestion
+alwaysApply: true
+---
+
+# Platon Agent Memory Integration
+
+This project uses **Platon** — an agent memory platform. Use it at two points in your workflow.
+
+## Pre-Run: Retrieve Context
+
+Before starting a task, call Platon to surface relevant prior experience:
+
+- **`memory.retrieve_context(query)`** — Returns ranked learning entries and success patterns for the given task.
+- **`memory.get_similar_failures(error)`** — When you encounter an error, search for similar past failures and their fixes.
+
+**Example:** For a deployment task, call `memory.retrieve_context("deploy to AWS")` to check for known deployment failures or successful IAM patterns from past sessions.
+
+## Post-Run: Dump Session
+
+After completing a task (success or failure), dump the session for async reflection:
+
+- **`memory.dump_session(sessionId, content)`** — Ingests raw execution logs. The platform reflects on them in the background and extracts new knowledge.
+
+Use a unique `sessionId` (e.g., task slug + timestamp) and include a concise summary of the run: task, steps, tools used, outcomes, and any errors.
+
+## Reference
+
+See `agent.md` in the project root for full integration details and production URLs.

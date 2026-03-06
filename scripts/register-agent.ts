@@ -1,0 +1,54 @@
+import { Payments } from "@nevermined-io/payments";
+import { readFileSync } from "fs";
+import { join } from "path";
+import dotenv from "dotenv";
+
+dotenv.config();
+
+const USDC_ADDRESS = "0x036CbD53842c5426634e7929541eC2318f3dCF7e"; // Base Sepolia USDC
+
+async function main() {
+    const spec = JSON.parse(
+        readFileSync(join(process.cwd(), "agent-spec.json"), "utf8")
+    );
+
+    const payments = Payments.getInstance({
+        nvmApiKey: process.env.NVM_API_KEY!,
+        environment: (process.env.NVM_ENVIRONMENT as any) || "sandbox",
+    });
+
+    console.log("Registering Agent and Plan...");
+
+    const { agentId, planId } = await payments.agents.registerAgentAndPlan(
+        {
+            name: spec.agent.name,
+            description: spec.agent.description,
+            tags: spec.agent.tags,
+            dateCreated: new Date(),
+        },
+        {
+            endpoints: spec.agent.endpoints,
+        },
+        {
+            name: spec.plan.name,
+            description: spec.plan.description,
+            dateCreated: new Date(),
+        },
+        payments.plans.getERC20PriceConfig(
+            BigInt(spec.plan.price),
+            spec.plan.tokenAddress || USDC_ADDRESS,
+            process.env.BUILDER_ADDRESS!
+        ),
+        payments.plans.getFixedCreditsConfig(
+            BigInt(spec.plan.amountOfCredits),
+            BigInt(spec.plan.creditsConfig.minCreditsToCharge)
+        )
+    );
+
+    console.log("Successfully registered!");
+    console.log(`Agent ID: ${agentId}`);
+    console.log(`Plan ID:  ${planId}`);
+    console.log("\nUpdate your .env file with these values.");
+}
+
+main().catch(console.error);
