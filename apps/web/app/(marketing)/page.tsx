@@ -2,82 +2,113 @@
 
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { Zap, ArrowRight, Brain, Database, Network, Shield, BarChart3, Cpu } from "lucide-react";
+import { Zap, ArrowRight, ChevronRight, Sparkles } from "lucide-react";
 
-/* ─── Floating annotation dot ─── */
-function FloatingDot({
+/* ─── Floating geometric block ─── */
+function FloatingBlock({
+  w,
+  h,
   x,
   y,
-  label,
-  delay = 0,
+  color,
+  delay,
+  duration,
 }: {
+  w: number;
+  h: number;
   x: string;
   y: string;
-  label: string;
-  delay?: number;
+  color: string;
+  delay: number;
+  duration: number;
 }) {
   return (
     <motion.div
-      className="absolute hidden md:flex items-center gap-2"
-      style={{ left: x, top: y }}
-      initial={{ opacity: 0, scale: 0 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ duration: 0.6, delay: 1 + delay, ease: "backOut" }}
-    >
-      {/* Corner brackets */}
-      <div className="relative w-10 h-10">
-        {/* dot */}
-        <motion.div
-          className="absolute inset-0 m-auto w-3 h-3 rounded-full bg-accent-violet"
-          animate={{ boxShadow: ["0 0 0 0 rgba(139,92,246,0.4)", "0 0 12px 4px rgba(139,92,246,0)", "0 0 0 0 rgba(139,92,246,0.4)"] }}
-          transition={{ duration: 3, repeat: Infinity, delay }}
-        />
-        {/* brackets */}
-        <svg viewBox="0 0 40 40" className="absolute inset-0 w-full h-full text-accent-violet/50">
-          <path d="M2 10 L2 2 L10 2" fill="none" stroke="currentColor" strokeWidth="1.5" />
-          <path d="M30 2 L38 2 L38 10" fill="none" stroke="currentColor" strokeWidth="1.5" />
-          <path d="M38 30 L38 38 L30 38" fill="none" stroke="currentColor" strokeWidth="1.5" />
-          <path d="M10 38 L2 38 L2 30" fill="none" stroke="currentColor" strokeWidth="1.5" />
-        </svg>
-      </div>
-      <span className="text-[11px] font-mono tracking-wider text-accent-violet/80 whitespace-nowrap">
-        {label}
-      </span>
-    </motion.div>
+      className="absolute rounded-xl"
+      style={{
+        width: w,
+        height: h,
+        left: x,
+        top: y,
+        backgroundColor: color,
+      }}
+      initial={{ opacity: 0, scale: 0.8 }}
+      whileInView={{ opacity: 1, scale: 1 }}
+      viewport={{ once: true }}
+      animate={{
+        y: [0, -10, 0, 8, 0],
+      }}
+      transition={{
+        y: { duration, repeat: Infinity, ease: "easeInOut", delay },
+        opacity: { duration: 0.6, delay: delay * 0.3 },
+        scale: { duration: 0.6, delay: delay * 0.3 },
+      }}
+    />
   );
 }
 
-/* ─── Feature card ─── */
-function FeatureCard({
-  icon: Icon,
+/* ─── Arrow link (Mistral-style) ─── */
+function ArrowLink({
+  href,
+  children,
+}: {
+  href: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <Link
+      href={href}
+      className="group inline-flex items-center gap-2 text-text-primary hover:text-accent-violet transition-colors"
+    >
+      <span className="text-sm font-medium tracking-wide">{children}</span>
+      <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+      <span className="block h-px bg-current mt-0.5 w-0 group-hover:w-full transition-all duration-300 absolute bottom-0 left-0" />
+    </Link>
+  );
+}
+
+/* ─── Feature item ─── */
+function FeatureItem({
   title,
   description,
   index,
 }: {
-  icon: typeof Brain;
   title: string;
   description: string;
   index: number;
 }) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 24 }}
+      initial={{ opacity: 0, y: 20 }}
       whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: "-60px" }}
-      transition={{ duration: 0.5, delay: index * 0.1 }}
-      className="group relative glass rounded-2xl p-6 hover:border-accent-violet/30 transition-all duration-300"
+      viewport={{ once: true, margin: "-40px" }}
+      transition={{ duration: 0.5, delay: index * 0.12 }}
     >
-      <div className="w-10 h-10 rounded-xl bg-accent-violet-dim flex items-center justify-center mb-4 group-hover:bg-accent-violet/20 transition-colors">
-        <Icon className="w-5 h-5 text-accent-violet" />
+      <div className="border-t border-border-default/60 pt-8 pb-10">
+        <h3 className="text-xl md:text-2xl font-semibold text-text-primary mb-4 leading-snug">
+          {title}
+        </h3>
+        <div className="flex items-start gap-3">
+          <ArrowRight className="w-5 h-5 text-accent-violet mt-0.5 shrink-0" />
+          <p className="text-sm text-text-muted leading-relaxed max-w-md">
+            {description}
+          </p>
+        </div>
       </div>
-      <h3 className="text-base font-semibold text-text-primary mb-2">{title}</h3>
-      <p className="text-sm text-text-muted leading-relaxed">{description}</p>
     </motion.div>
   );
 }
 
 /* ─── Stat ─── */
-function Stat({ value, label, delay }: { value: string; label: string; delay: number }) {
+function Stat({
+  value,
+  label,
+  delay,
+}: {
+  value: string;
+  label: string;
+  delay: number;
+}) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 16 }}
@@ -86,13 +117,14 @@ function Stat({ value, label, delay }: { value: string; label: string; delay: nu
       transition={{ duration: 0.5, delay }}
       className="text-center"
     >
-      <div className="text-3xl md:text-4xl font-bold text-text-primary mb-1">{value}</div>
+      <div className="text-3xl md:text-4xl font-bold text-text-primary mb-1">
+        {value}
+      </div>
       <div className="text-sm text-text-muted">{label}</div>
     </motion.div>
   );
 }
 
-/* ─── Company logos (placeholder) ─── */
 const companies = ["Ordinal", "Nexus", "Mintlify", "Luminai", "Greptile"];
 
 export default function LandingPage() {
@@ -105,126 +137,188 @@ export default function LandingPage() {
         transition={{ duration: 0.5 }}
         className="fixed top-0 left-0 right-0 z-50 px-6 md:px-10"
       >
-        <div className="max-w-7xl mx-auto flex items-center justify-between h-16 border-b border-white/5">
+        <div className="max-w-7xl mx-auto flex items-center justify-between h-16">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-lg bg-accent-violet flex items-center justify-center">
+            <div className="w-7 h-7 rounded-lg bg-white/10 backdrop-blur flex items-center justify-center border border-white/10">
               <Zap className="w-3.5 h-3.5 text-white" />
             </div>
-            <span className="text-lg font-semibold text-text-primary">Platon</span>
+            <span className="text-lg font-semibold text-white">Platon</span>
           </Link>
 
-          {/* Nav links */}
+          {/* Center nav */}
           <div className="hidden md:flex items-center gap-8">
-            <a href="#features" className="text-sm text-text-muted hover:text-text-primary transition-colors">
-              Product
-            </a>
-            <a href="#stats" className="text-sm text-text-muted hover:text-text-primary transition-colors">
-              Customers
-            </a>
-            <a href="#cta" className="text-sm text-text-muted hover:text-text-primary transition-colors">
-              Company
-            </a>
+            {["Products", "Solutions", "Research", "Company"].map((item) => (
+              <a
+                key={item}
+                href={`#${item.toLowerCase()}`}
+                className="text-sm text-white/60 hover:text-white transition-colors"
+              >
+                {item}
+              </a>
+            ))}
           </div>
 
-          {/* CTA */}
-          <Link
-            href="/dashboard"
-            className="text-sm font-medium text-text-primary hover:text-accent-violet transition-colors"
-          >
-            Open Dashboard
-          </Link>
+          {/* Right CTA */}
+          <div className="flex items-center gap-3">
+            <a
+              href="#cta"
+              className="hidden sm:inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-white/20 text-sm text-white/80 hover:text-white hover:border-white/40 transition-all"
+            >
+              Contact Sales
+              <ChevronRight className="w-3.5 h-3.5" />
+            </a>
+            <Link
+              href="/dashboard"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-white/20 text-sm text-white/80 hover:text-white hover:border-white/40 transition-all"
+            >
+              Open Dashboard
+              <ChevronRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
         </div>
       </motion.nav>
 
       {/* ═══ HERO ═══ */}
-      <section className="relative min-h-screen flex flex-col items-center justify-center px-6 pt-16">
-        {/* Background arcs */}
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <svg
-            viewBox="0 0 1200 1200"
-            className="w-[min(100vw,1200px)] h-[min(100vh,1200px)] opacity-[0.12]"
-            fill="none"
-          >
-            {[180, 300, 420, 540].map((r, i) => (
-              <motion.circle
-                key={r}
-                cx="600"
-                cy="600"
-                r={r}
-                stroke="url(#arcGrad)"
-                strokeWidth="1"
-                initial={{ pathLength: 0, opacity: 0 }}
-                animate={{ pathLength: 1, opacity: 1 }}
-                transition={{ duration: 1.5, delay: i * 0.2, ease: "easeOut" }}
-              />
-            ))}
-            <defs>
-              <linearGradient id="arcGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#8b5cf6" />
-                <stop offset="50%" stopColor="#8b5cf6" stopOpacity="0.3" />
-                <stop offset="100%" stopColor="#8b5cf6" stopOpacity="0" />
-              </linearGradient>
-            </defs>
-          </svg>
+      <section className="relative min-h-screen flex flex-col justify-end px-6 md:px-10 pb-16">
+        {/* Atmospheric background */}
+        <div className="absolute inset-0 overflow-hidden">
+          {/* Base gradient */}
+          <div
+            className="absolute inset-0"
+            style={{
+              background:
+                "radial-gradient(ellipse 120% 80% at 50% 100%, #2d1854 0%, #1a0a2e 40%, #09090b 80%)",
+            }}
+          />
 
-          {/* Diagonal accent line */}
+          {/* Warm glow at bottom */}
+          <div
+            className="absolute inset-0"
+            style={{
+              background:
+                "radial-gradient(ellipse 100% 50% at 40% 95%, rgba(139,92,246,0.15) 0%, transparent 70%)",
+            }}
+          />
+          <div
+            className="absolute inset-0"
+            style={{
+              background:
+                "radial-gradient(ellipse 60% 30% at 30% 100%, rgba(217,119,87,0.12) 0%, transparent 70%)",
+            }}
+          />
+
+          {/* Mountain layers */}
+          <div
+            className="absolute bottom-0 left-0 right-0 h-[70%]"
+            style={{
+              clipPath:
+                "polygon(0% 100%, 0% 65%, 5% 55%, 12% 60%, 18% 45%, 25% 52%, 32% 38%, 38% 42%, 42% 30%, 48% 35%, 52% 25%, 58% 32%, 62% 22%, 68% 28%, 72% 18%, 78% 25%, 82% 20%, 88% 30%, 92% 22%, 96% 28%, 100% 20%, 100% 100%)",
+              background:
+                "linear-gradient(180deg, rgba(80,40,120,0.5) 0%, rgba(60,25,90,0.6) 50%, rgba(45,20,70,0.7) 100%)",
+            }}
+          />
+          <div
+            className="absolute bottom-0 left-0 right-0 h-[55%]"
+            style={{
+              clipPath:
+                "polygon(0% 100%, 0% 70%, 4% 58%, 10% 65%, 16% 50%, 22% 58%, 28% 42%, 35% 50%, 40% 38%, 45% 45%, 52% 35%, 58% 42%, 65% 30%, 70% 38%, 76% 28%, 82% 35%, 88% 25%, 92% 32%, 97% 25%, 100% 30%, 100% 100%)",
+              background:
+                "linear-gradient(180deg, rgba(60,25,90,0.6) 0%, rgba(40,15,65,0.8) 50%, rgba(30,12,55,0.9) 100%)",
+            }}
+          />
+          <div
+            className="absolute bottom-0 left-0 right-0 h-[40%]"
+            style={{
+              clipPath:
+                "polygon(0% 100%, 0% 60%, 8% 48%, 15% 55%, 22% 40%, 30% 50%, 38% 35%, 45% 45%, 52% 30%, 60% 42%, 68% 28%, 75% 38%, 82% 25%, 90% 35%, 95% 28%, 100% 35%, 100% 100%)",
+              background:
+                "linear-gradient(180deg, rgba(40,15,65,0.8) 0%, rgba(25,10,45,0.95) 60%, #09090b 100%)",
+            }}
+          />
+
+          {/* Diagonal light beam */}
           <motion.div
-            className="absolute w-px h-[140%] bg-gradient-to-b from-transparent via-accent-violet/20 to-transparent rotate-[25deg]"
+            className="absolute w-[200%] h-px top-0 left-[-50%] origin-center"
+            style={{
+              background:
+                "linear-gradient(90deg, transparent 20%, rgba(139,92,246,0.08) 45%, rgba(139,92,246,0.15) 50%, rgba(139,92,246,0.08) 55%, transparent 80%)",
+              transform: "rotate(25deg) translateY(35vh)",
+            }}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ duration: 1, delay: 0.5 }}
+            transition={{ duration: 1.5, delay: 0.5 }}
           />
         </div>
 
-        {/* Floating dots */}
-        <FloatingDot x="22%" y="18%" label="MEMORY STORED" delay={0} />
-        <FloatingDot x="68%" y="14%" label="PATTERN DETECTED" delay={0.3} />
-        <FloatingDot x="15%" y="50%" label="AGENT LEARNING" delay={0.6} />
-        <FloatingDot x="78%" y="48%" label="CONTEXT RETRIEVED" delay={0.9} />
-
         {/* Hero content */}
-        <div className="relative z-10 text-center max-w-3xl mx-auto">
+        <div className="relative z-10 max-w-7xl mx-auto w-full">
+          {/* Announcement pill */}
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, delay: 0.3 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+            className="mb-12"
           >
-            <h1 className="text-4xl sm:text-5xl md:text-7xl font-light text-text-primary leading-[1.1] tracking-tight mb-6">
-              AI Agents for{" "}
-              <span className="block">Memory Optimization</span>
-            </h1>
+            <div className="inline-flex items-center gap-2.5 px-4 py-2 rounded-full bg-white/5 border border-white/10 backdrop-blur-sm">
+              <Sparkles className="w-3.5 h-3.5 text-accent-violet" />
+              <span className="text-sm text-white/70">
+                New: Agent Memory Protocol is live.
+              </span>
+            </div>
           </motion.div>
 
+          {/* Headline */}
+          <motion.h1
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, delay: 0.4 }}
+            className="text-5xl sm:text-6xl md:text-8xl font-light text-white leading-[1.05] tracking-tight mb-8 max-w-4xl"
+          >
+            AI Agents for
+            <br />
+            Memory Optimization.
+          </motion.h1>
+
+          {/* Subtitle */}
           <motion.p
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.6 }}
-            className="text-base md:text-lg text-text-muted max-w-xl mx-auto mb-10 leading-relaxed"
+            transition={{ duration: 0.6, delay: 0.7 }}
+            className="text-base md:text-lg text-white/50 max-w-xl mb-12 leading-relaxed"
           >
-            Platon works hand in hand with your AI agents to turn memory
-            into a real engine — not a pile of disconnected context windows.
+            Platon works hand in hand with your AI agents to turn memory into a
+            real engine — not a pile of disconnected context windows and
+            experiments.
           </motion.p>
 
+          {/* CTAs */}
           <motion.div
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.9 }}
-            className="flex flex-col sm:flex-row items-center justify-center gap-4"
+            transition={{ duration: 0.5, delay: 1 }}
+            className="flex items-center gap-8 mb-4"
           >
             <Link
               href="/dashboard"
-              className="group inline-flex items-center gap-2 px-8 py-3.5 rounded-xl bg-accent-violet text-white font-medium text-sm tracking-wide uppercase hover:bg-accent-violet/90 transition-all shadow-[0_0_24px_rgba(139,92,246,0.25)] hover:shadow-[0_0_32px_rgba(139,92,246,0.35)]"
+              className="group inline-flex flex-col"
             >
-              Open Dashboard
-              <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+              <span className="flex items-center gap-2 text-sm font-medium text-white tracking-wide">
+                Get started
+                <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+              </span>
+              <span className="h-px w-full bg-white/30 mt-2 group-hover:bg-accent-violet transition-colors" />
             </Link>
-            <a
-              href="#features"
-              className="inline-flex items-center gap-2 px-8 py-3.5 rounded-xl border border-border-default text-text-secondary font-medium text-sm tracking-wide uppercase hover:border-border-hover hover:text-text-primary transition-all"
+            <Link
+              href="/dashboard"
+              className="group inline-flex flex-col"
             >
-              Learn More
-            </a>
+              <span className="flex items-center gap-2 text-sm font-medium text-white tracking-wide">
+                Open dashboard
+                <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+              </span>
+              <span className="h-px w-full bg-white/30 mt-2 group-hover:bg-accent-violet transition-colors" />
+            </Link>
           </motion.div>
         </div>
 
@@ -233,16 +327,13 @@ export default function LandingPage() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.8, delay: 1.4 }}
-          className="relative z-10 mt-24 mb-8"
+          className="relative z-10 max-w-7xl mx-auto w-full mt-20 pt-8 border-t border-white/10"
         >
-          <p className="text-xs text-text-muted text-center uppercase tracking-widest mb-6">
-            Trusted by leading teams
-          </p>
-          <div className="flex items-center justify-center gap-10 md:gap-14 flex-wrap">
+          <div className="flex items-center gap-10 md:gap-14 flex-wrap">
             {companies.map((name) => (
               <span
                 key={name}
-                className="text-text-muted/40 text-base md:text-lg font-semibold tracking-wide hover:text-text-muted/60 transition-colors cursor-default"
+                className="text-white/20 text-sm md:text-base font-semibold tracking-wide hover:text-white/35 transition-colors cursor-default"
               >
                 {name}
               </span>
@@ -251,67 +342,75 @@ export default function LandingPage() {
         </motion.div>
       </section>
 
-      {/* ═══ FEATURES ═══ */}
-      <section id="features" className="relative px-6 py-24 md:py-32">
-        <div className="max-w-6xl mx-auto">
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-center mb-16"
-          >
-            <h2 className="text-3xl md:text-4xl font-light text-text-primary mb-4">
-              Memory infrastructure that{" "}
-              <span className="text-accent-violet">works</span>
-            </h2>
-            <p className="text-text-muted max-w-lg mx-auto">
-              Everything your agents need to learn, remember, and improve — in one platform.
-            </p>
-          </motion.div>
+      {/* ═══ FEATURES SPLIT ═══ */}
+      <section
+        id="products"
+        className="relative px-6 md:px-10 py-24 md:py-32"
+      >
+        <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16 lg:gap-24">
+          {/* Left — geometric art + headline */}
+          <div className="relative min-h-[500px] lg:min-h-[700px]">
+            {/* Floating blocks */}
+            <FloatingBlock w={100} h={130} x="10%" y="5%" color="rgba(139,92,246,0.12)" delay={0} duration={6} />
+            <FloatingBlock w={70} h={90} x="45%" y="0%" color="rgba(139,92,246,0.08)" delay={0.5} duration={7} />
+            <FloatingBlock w={55} h={70} x="70%" y="12%" color="rgba(139,92,246,0.1)" delay={1} duration={5.5} />
+            <FloatingBlock w={80} h={100} x="5%" y="30%" color="rgba(139,92,246,0.06)" delay={1.5} duration={8} />
+            <FloatingBlock w={60} h={80} x="55%" y="25%" color="rgba(139,92,246,0.09)" delay={0.8} duration={6.5} />
+            <FloatingBlock w={90} h={60} x="25%" y="50%" color="rgba(139,92,246,0.07)" delay={1.2} duration={7.5} />
+            <FloatingBlock w={50} h={65} x="65%" y="45%" color="rgba(139,92,246,0.11)" delay={0.3} duration={5} />
+            <FloatingBlock w={110} h={80} x="15%" y="65%" color="rgba(139,92,246,0.05)" delay={2} duration={9} />
+            <FloatingBlock w={40} h={55} x="50%" y="60%" color="rgba(139,92,246,0.08)" delay={1.8} duration={6} />
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            <FeatureCard
-              icon={Brain}
-              title="Reflection Engine"
-              description="Automatically analyze every session to extract what went well, what failed, and reusable tactics for the future."
+            {/* Headline */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="absolute bottom-0 left-0 right-0"
+            >
+              <h2 className="text-3xl md:text-5xl font-light text-text-primary leading-tight">
+                Your AI memory
+                <br />
+                belongs in
+                <br />
+                your agents.{" "}
+                <span className="inline-flex items-center align-middle ml-1">
+                  <span className="w-8 h-8 rounded-lg bg-accent-violet inline-flex items-center justify-center">
+                    <Zap className="w-4 h-4 text-white" />
+                  </span>
+                </span>
+              </h2>
+            </motion.div>
+          </div>
+
+          {/* Right — feature list */}
+          <div className="flex flex-col justify-center">
+            <FeatureItem
+              title="Reflection engine, built for depth."
+              description="Automatically analyze every session to extract what went well, what failed, and reusable tactics. Every learning is scored for confidence and stored in a knowledge graph."
               index={0}
             />
-            <FeatureCard
-              icon={Network}
-              title="Knowledge Graph"
-              description="Store learnings in a rich graph structure that surfaces relevant context based on similarity and provenance."
+            <FeatureItem
+              title="Enterprise agents with persistent memory."
+              description="Deploy agents that execute, adapt, and deliver real results — with powerful orchestration, memory retrieval, and safety built in from day one."
               index={1}
             />
-            <FeatureCard
-              icon={Database}
-              title="Vector + Graph Retrieval"
-              description="Combine semantic search with graph traversal for retrieval that understands relationships, not just keywords."
+            <FeatureItem
+              title="Self-contained private deployments."
+              description="Build privately anywhere — on-premises, cloud, edge, devices, and more — while retaining full control of your data and complete tenant isolation."
               index={2}
             />
-            <FeatureCard
-              icon={Shield}
-              title="Tenant Isolation"
-              description="Every query, every learning, every session is scoped to your tenant. No cross-contamination, ever."
+            <FeatureItem
+              title="Deeply integrated retrieval and context."
+              description="Combine vector similarity search with graph traversal for retrieval that understands relationships, provenance, and patterns — not just keywords."
               index={3}
-            />
-            <FeatureCard
-              icon={BarChart3}
-              title="Confidence Scoring"
-              description="Every learning carries a confidence score that increases as more sessions validate the same pattern."
-              index={4}
-            />
-            <FeatureCard
-              icon={Cpu}
-              title="MCP Protocol"
-              description="Drop-in integration via Model Context Protocol. Your agents dump sessions, we handle the rest."
-              index={5}
             />
           </div>
         </div>
       </section>
 
       {/* ═══ STATS ═══ */}
-      <section id="stats" className="relative px-6 py-24">
+      <section id="solutions" className="relative px-6 md:px-10 py-24">
         <div className="max-w-4xl mx-auto">
           <div className="glass rounded-3xl p-10 md:p-16">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
@@ -325,7 +424,10 @@ export default function LandingPage() {
       </section>
 
       {/* ═══ HOW IT WORKS ═══ */}
-      <section className="relative px-6 py-24 md:py-32">
+      <section
+        id="research"
+        className="relative px-6 md:px-10 py-24 md:py-32"
+      >
         <div className="max-w-4xl mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 16 }}
@@ -380,7 +482,7 @@ export default function LandingPage() {
       </section>
 
       {/* ═══ CTA ═══ */}
-      <section id="cta" className="relative px-6 py-24 md:py-32">
+      <section id="cta" className="relative px-6 md:px-10 py-24 md:py-32">
         <div className="max-w-3xl mx-auto text-center">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -388,47 +490,53 @@ export default function LandingPage() {
             viewport={{ once: true }}
           >
             <h2 className="text-3xl md:text-5xl font-light text-text-primary mb-6 leading-tight">
-              Give your agents the memory<br />they deserve
+              Give your agents the memory
+              <br />
+              they deserve
             </h2>
             <p className="text-text-muted max-w-md mx-auto mb-10">
-              Start building agents that learn from every interaction.
-              Free tier available — no credit card required.
+              Start building agents that learn from every interaction. Free tier
+              available — no credit card required.
             </p>
             <Link
               href="/dashboard"
-              className="group inline-flex items-center gap-2 px-10 py-4 rounded-xl bg-accent-violet text-white font-medium text-sm tracking-wide uppercase hover:bg-accent-violet/90 transition-all shadow-[0_0_24px_rgba(139,92,246,0.25)] hover:shadow-[0_0_40px_rgba(139,92,246,0.4)]"
+              className="group inline-flex flex-col items-center"
             >
-              Get Started
-              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+              <span className="flex items-center gap-2 text-base font-medium text-text-primary tracking-wide">
+                Get Started
+                <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+              </span>
+              <span className="h-px w-full bg-border-default mt-2 group-hover:bg-accent-violet transition-colors" />
             </Link>
           </motion.div>
         </div>
       </section>
 
       {/* ═══ FOOTER ═══ */}
-      <footer className="border-t border-border-default/50 px-6 py-8">
-        <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+      <footer className="border-t border-border-default/50 px-6 md:px-10 py-8">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2.5">
             <div className="w-6 h-6 rounded-md bg-accent-violet flex items-center justify-center">
               <Zap className="w-3 h-3 text-white" />
             </div>
-            <span className="text-sm font-medium text-text-secondary">Platon</span>
+            <span className="text-sm font-medium text-text-secondary">
+              Platon
+            </span>
           </div>
           <div className="flex items-center gap-6">
-            <a href="#features" className="text-xs text-text-muted hover:text-text-secondary transition-colors">
-              Product
-            </a>
-            <a href="#" className="text-xs text-text-muted hover:text-text-secondary transition-colors">
-              Docs
-            </a>
-            <a href="#" className="text-xs text-text-muted hover:text-text-secondary transition-colors">
-              GitHub
-            </a>
-            <a href="#" className="text-xs text-text-muted hover:text-text-secondary transition-colors">
-              Twitter
-            </a>
+            {["Product", "Docs", "GitHub", "Twitter"].map((link) => (
+              <a
+                key={link}
+                href="#"
+                className="text-xs text-text-muted hover:text-text-secondary transition-colors"
+              >
+                {link}
+              </a>
+            ))}
           </div>
-          <span className="text-xs text-text-muted">&copy; 2026 Platon. All rights reserved.</span>
+          <span className="text-xs text-text-muted">
+            &copy; 2026 Platon. All rights reserved.
+          </span>
         </div>
       </footer>
     </div>
