@@ -66,6 +66,83 @@ Your agent now has access to three tools:
 | `memory.retrieve_context` | Query relevant memories before a task |
 | `memory.get_similar_failures` | Find similar past failures to avoid |
 
+Paid MCP server operators must also set these runtime variables before boot:
+
+- `NVM_API_KEY`
+- `PLATON_INTERNAL_AUTH_TOKEN`
+- `NVM_ENVIRONMENT`
+- optional `MEMORY_API_URL`
+
+The caller transport contract is separate:
+
+- `Authorization: Bearer <x402-access-token>`
+- `Accept: application/json, text/event-stream`
+- reuse `Mcp-Session-Id` after `initialize`
+
+Exact first-run MCP profile:
+
+```bash
+curl -i -X POST https://platon.bigf.me/mcp \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
+  -H "Authorization: Bearer <x402-access-token>" \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "initialize",
+    "params": {
+      "protocolVersion": "2024-11-05",
+      "capabilities": {},
+      "clientInfo": { "name": "platon-smoke", "version": "1.0.0" }
+    }
+  }'
+```
+
+```bash
+curl -i -X POST https://platon.bigf.me/mcp \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
+  -H "Authorization: Bearer <x402-access-token>" \
+  -H "Mcp-Session-Id: <session-id-from-initialize>" \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 2,
+    "method": "tools/call",
+    "params": {
+      "name": "memory.retrieve_context",
+      "arguments": {
+        "agentKind": "code-assistant",
+        "agentId": "agent-prod-01",
+        "query": "Summarize prior failures and tactics for today's task",
+        "limit": 5
+      }
+    }
+  }'
+```
+
+```bash
+curl -i -X POST https://platon.bigf.me/mcp \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
+  -H "Authorization: Bearer <x402-access-token>" \
+  -H "Mcp-Session-Id: <session-id-from-initialize>" \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 3,
+    "method": "tools/call",
+    "params": {
+      "name": "memory.dump_session",
+      "arguments": {
+        "agentKind": "code-assistant",
+        "agentId": "agent-prod-01",
+        "sessionId": "session-2026-03-06-001",
+        "task": { "kind": "debug", "summary": "Investigate the onboarding prerequisites failure path" },
+        "outcome": { "status": "success", "summary": "Documented the required startup env and first-call MCP contract" }
+      }
+    }
+  }'
+```
+
 ### Option 2: REST API
 
 ```bash

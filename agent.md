@@ -73,6 +73,15 @@ Access to the platform is managed via **Nevermined**.
 
 Acquire the paid token through `payments.x402.getX402AccessToken(...)`. Do not use the older `payments.agents.getAgentAccessToken(...)` helper for the hosted Platon flow.
 
+## First-Run MCP Contract
+
+For a first successful MCP connection, keep two contracts separate:
+
+- server operator env for self-hosted paid MCP: `NVM_API_KEY`, `PLATON_INTERNAL_AUTH_TOKEN`, `NVM_ENVIRONMENT`, optional `MEMORY_API_URL`
+- caller transport headers: `Authorization: Bearer <x402-token>` plus `Accept: application/json, text/event-stream`
+
+Initialize first, read the returned `Mcp-Session-Id` header, then send that header on later `tools/call` requests. Keep `agentKind` and `agentId` stable across runs and pass them in every memory tool call.
+
 ## The Feedback Loop
 
 By consistently dumping sessions and retrieving context, agents create a self-improving system. Your logs today become the "Success Patterns" for the agent running tomorrow.

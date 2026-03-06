@@ -98,6 +98,32 @@ Use:
 - \`POST /retrieve\`
 - \`POST /sessions\`
 
+## Self-Hosted Paid MCP Prerequisites
+
+If you run your own paid MCP server, the operator must set these variables before the server starts:
+
+- \`NVM_API_KEY\`: required for Nevermined-backed paid MCP startup. The server exits at startup if it is missing.
+- \`PLATON_INTERNAL_AUTH_TOKEN\`: required for MCP-to-API forwarding. The server exits at startup if it is missing.
+- \`NVM_ENVIRONMENT\`: set \`sandbox\` or \`live\`.
+- \`MEMORY_API_URL\`: optional override for the backing API base URL.
+
+Keep the operator env separate from the caller transport contract:
+
+- server operator sets \`NVM_API_KEY\` and \`PLATON_INTERNAL_AUTH_TOKEN\`
+- MCP caller sends \`Authorization: Bearer <x402-access-token>\`
+- MCP caller also sends \`Accept: application/json, text/event-stream\`
+- MCP caller reuses the returned \`Mcp-Session-Id\` header on the next MCP requests
+
+If you are self-hosting locally, a first-run shell can look like this:
+
+\`\`\`bash
+NVM_API_KEY=sandbox:your-nevermined-key \\
+PLATON_INTERNAL_AUTH_TOKEN=replace-with-a-random-secret \\
+NVM_ENVIRONMENT=sandbox \\
+MEMORY_API_URL=http://localhost:3001 \\
+pnpm --filter @memory/mcp dev
+\`\`\`
+
 ## Acquire An x402 Token
 
 For the hosted paid service, subscribe with a Nevermined subscriber key and generate an x402 token before calling MCP or the direct HTTP API:
@@ -130,6 +156,89 @@ Use the generated token like this:
 - Direct API calls: \`payment-signature: <x402-access-token>\`
 
 If you are upgrading from \`@nevermined-io/payments@1.0.0-rc14\`, do not use \`payments.agents.getAgentAccessToken(...)\` for the hosted Platon flow. That older helper targets a backend route that can return 404 in current sandbox environments. Use \`payments.x402.getX402AccessToken(...)\` instead.
+
+## Exact First MCP Request Profile
+
+For a first successful remote MCP connection, use the StreamableHTTP headers exactly as shown here. The \`Authorization\` token belongs on the MCP transport, not inside tool arguments.
+
+### 1. Initialize
+
+\`\`\`bash
+curl -i -X POST ${MCP_ENDPOINT_URL} \\
+  -H "Content-Type: application/json" \\
+  -H "Accept: application/json, text/event-stream" \\
+  -H "Authorization: Bearer <x402-access-token>" \\
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "initialize",
+    "params": {
+      "protocolVersion": "2024-11-05",
+      "capabilities": {},
+      "clientInfo": {
+        "name": "platon-smoke",
+        "version": "1.0.0"
+      }
+    }
+  }'
+\`\`\`
+
+Read the \`Mcp-Session-Id\` response header and send it on every later MCP request in the same session.
+
+### 2. Retrieve Context
+
+\`\`\`bash
+curl -i -X POST ${MCP_ENDPOINT_URL} \\
+  -H "Content-Type: application/json" \\
+  -H "Accept: application/json, text/event-stream" \\
+  -H "Authorization: Bearer <x402-access-token>" \\
+  -H "Mcp-Session-Id: <session-id-from-initialize>" \\
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 2,
+    "method": "tools/call",
+    "params": {
+      "name": "memory.retrieve_context",
+      "arguments": {
+        "agentKind": "code-assistant",
+        "agentId": "agent-prod-01",
+        "query": "Summarize prior failures and tactics for today's task",
+        "limit": 5
+      }
+    }
+  }'
+\`\`\`
+
+### 3. Dump Session
+
+\`\`\`bash
+curl -i -X POST ${MCP_ENDPOINT_URL} \\
+  -H "Content-Type: application/json" \\
+  -H "Accept: application/json, text/event-stream" \\
+  -H "Authorization: Bearer <x402-access-token>" \\
+  -H "Mcp-Session-Id: <session-id-from-initialize>" \\
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 3,
+    "method": "tools/call",
+    "params": {
+      "name": "memory.dump_session",
+      "arguments": {
+        "agentKind": "code-assistant",
+        "agentId": "agent-prod-01",
+        "sessionId": "session-2026-03-06-001",
+        "task": {
+          "kind": "debug",
+          "summary": "Investigate the onboarding prerequisites failure path"
+        },
+        "outcome": {
+          "status": "success",
+          "summary": "Documented the required startup env and first-call MCP contract"
+        }
+      }
+    }
+  }'
+\`\`\`
 
 ## Required Runtime Behavior
 
