@@ -2,7 +2,8 @@
 
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { Zap, ArrowRight, ChevronRight, Sparkles } from "lucide-react";
+import { Zap, ArrowRight, ChevronRight, Sparkles, Copy, Check } from "lucide-react";
+import { useState } from "react";
 
 /* ─── Floating geometric block ─── */
 function FloatingBlock({
@@ -122,6 +123,222 @@ function Stat({
       </div>
       <div className="text-sm text-text-muted">{label}</div>
     </motion.div>
+  );
+}
+
+/* ─── Code snippet panel ─── */
+const mcpCode = `{
+  "mcpServers": {
+    "platon": {
+      "command": "npx",
+      "args": ["-y", "@platon/mcp-server"],
+      "env": {
+        "PLATON_API_KEY": "your-api-key"
+      }
+    }
+  }
+}`;
+
+const curlCode = `curl -X POST https://api.platon.dev/sessions \\
+  -H "Authorization: Bearer $PLATON_API_KEY" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "agentId": "my-agent",
+    "sessionId": "sess-001",
+    "task": {
+      "kind": "review",
+      "summary": "PR #42"
+    },
+    "outcome": {
+      "status": "success",
+      "summary": "Done"
+    }
+  }'`;
+
+function CodeSnippet() {
+  const [activeTab, setActiveTab] = useState<"mcp" | "curl">("mcp");
+  const [copied, setCopied] = useState(false);
+
+  const code = activeTab === "mcp" ? mcpCode : curlCode;
+
+  function handleCopy() {
+    navigator.clipboard.writeText(code);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: 30, scale: 0.97 }}
+      animate={{ opacity: 1, x: 0, scale: 1 }}
+      transition={{ duration: 0.7, delay: 0.8 }}
+      className="relative rounded-2xl overflow-hidden"
+      style={{
+        background: "rgba(255,255,255,0.03)",
+        backdropFilter: "blur(24px)",
+        border: "1px solid rgba(255,255,255,0.08)",
+        boxShadow: "0 8px 32px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)",
+      }}
+    >
+      {/* Header bar */}
+      <div className="flex items-center justify-between px-4 py-3 border-b border-white/5">
+        <div className="flex items-center gap-3">
+          {/* Traffic light dots */}
+          <div className="flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 rounded-full bg-[#ff5f57]" />
+            <span className="w-2.5 h-2.5 rounded-full bg-[#febc2e]" />
+            <span className="w-2.5 h-2.5 rounded-full bg-[#28c840]" />
+          </div>
+
+          {/* Tabs */}
+          <div className="flex items-center gap-0.5 ml-2">
+            <button
+              onClick={() => setActiveTab("mcp")}
+              className={`px-3 py-1 rounded-md text-xs font-mono transition-all ${
+                activeTab === "mcp"
+                  ? "bg-white/8 text-white/90"
+                  : "text-white/35 hover:text-white/55"
+              }`}
+            >
+              mcp.json
+            </button>
+            <button
+              onClick={() => setActiveTab("curl")}
+              className={`px-3 py-1 rounded-md text-xs font-mono transition-all ${
+                activeTab === "curl"
+                  ? "bg-white/8 text-white/90"
+                  : "text-white/35 hover:text-white/55"
+              }`}
+            >
+              curl
+            </button>
+          </div>
+        </div>
+
+        {/* Copy button */}
+        <button
+          onClick={handleCopy}
+          className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-white/40 hover:text-white/70 hover:bg-white/5 transition-all"
+        >
+          {copied ? (
+            <>
+              <Check className="w-3.5 h-3.5 text-accent-emerald" />
+              <span className="text-[10px] text-accent-emerald">Copied</span>
+            </>
+          ) : (
+            <>
+              <Copy className="w-3.5 h-3.5" />
+              <span className="text-[10px]">Copy</span>
+            </>
+          )}
+        </button>
+      </div>
+
+      {/* Code content */}
+      <div className="p-5 overflow-x-auto">
+        <pre className="text-[13px] leading-relaxed font-mono">
+          {activeTab === "mcp" ? (
+            <McpHighlighted />
+          ) : (
+            <CurlHighlighted />
+          )}
+        </pre>
+      </div>
+    </motion.div>
+  );
+}
+
+function McpHighlighted() {
+  return (
+    <code>
+      <span className="text-white/40">{"{"}</span>{"\n"}
+      <span className="text-white/30">{"  "}</span>
+      <span className="text-accent-violet">&quot;mcpServers&quot;</span>
+      <span className="text-white/40">: {"{"}</span>{"\n"}
+      <span className="text-white/30">{"    "}</span>
+      <span className="text-accent-violet">&quot;platon&quot;</span>
+      <span className="text-white/40">: {"{"}</span>{"\n"}
+      <span className="text-white/30">{"      "}</span>
+      <span className="text-accent-sky">&quot;command&quot;</span>
+      <span className="text-white/40">: </span>
+      <span className="text-accent-emerald">&quot;npx&quot;</span>
+      <span className="text-white/40">,</span>{"\n"}
+      <span className="text-white/30">{"      "}</span>
+      <span className="text-accent-sky">&quot;args&quot;</span>
+      <span className="text-white/40">: [</span>
+      <span className="text-accent-emerald">&quot;-y&quot;</span>
+      <span className="text-white/40">, </span>
+      <span className="text-accent-emerald">&quot;@platon/mcp-server&quot;</span>
+      <span className="text-white/40">],</span>{"\n"}
+      <span className="text-white/30">{"      "}</span>
+      <span className="text-accent-sky">&quot;env&quot;</span>
+      <span className="text-white/40">: {"{"}</span>{"\n"}
+      <span className="text-white/30">{"        "}</span>
+      <span className="text-accent-amber">&quot;PLATON_API_KEY&quot;</span>
+      <span className="text-white/40">: </span>
+      <span className="text-accent-emerald">&quot;your-api-key&quot;</span>{"\n"}
+      <span className="text-white/30">{"      "}</span>
+      <span className="text-white/40">{"}"}</span>{"\n"}
+      <span className="text-white/30">{"    "}</span>
+      <span className="text-white/40">{"}"}</span>{"\n"}
+      <span className="text-white/30">{"  "}</span>
+      <span className="text-white/40">{"}"}</span>{"\n"}
+      <span className="text-white/40">{"}"}</span>
+    </code>
+  );
+}
+
+function CurlHighlighted() {
+  return (
+    <code>
+      <span className="text-accent-emerald">curl</span>
+      <span className="text-white/60"> -X POST </span>
+      <span className="text-accent-sky">https://api.platon.dev/sessions</span>
+      <span className="text-white/30"> \</span>{"\n"}
+      <span className="text-white/60">{"  "}-H </span>
+      <span className="text-accent-emerald">&quot;Authorization: Bearer $PLATON_API_KEY&quot;</span>
+      <span className="text-white/30"> \</span>{"\n"}
+      <span className="text-white/60">{"  "}-H </span>
+      <span className="text-accent-emerald">&quot;Content-Type: application/json&quot;</span>
+      <span className="text-white/30"> \</span>{"\n"}
+      <span className="text-white/60">{"  "}-d </span>
+      <span className="text-accent-emerald">&apos;{"{"}</span>{"\n"}
+      <span className="text-white/30">{"    "}</span>
+      <span className="text-accent-violet">&quot;agentId&quot;</span>
+      <span className="text-white/40">: </span>
+      <span className="text-accent-emerald">&quot;my-agent&quot;</span>
+      <span className="text-white/40">,</span>{"\n"}
+      <span className="text-white/30">{"    "}</span>
+      <span className="text-accent-violet">&quot;sessionId&quot;</span>
+      <span className="text-white/40">: </span>
+      <span className="text-accent-emerald">&quot;sess-001&quot;</span>
+      <span className="text-white/40">,</span>{"\n"}
+      <span className="text-white/30">{"    "}</span>
+      <span className="text-accent-violet">&quot;task&quot;</span>
+      <span className="text-white/40">: {"{"} </span>
+      <span className="text-accent-sky">&quot;kind&quot;</span>
+      <span className="text-white/40">: </span>
+      <span className="text-accent-emerald">&quot;review&quot;</span>
+      <span className="text-white/40">, </span>
+      <span className="text-accent-sky">&quot;summary&quot;</span>
+      <span className="text-white/40">: </span>
+      <span className="text-accent-emerald">&quot;PR #42&quot;</span>
+      <span className="text-white/40"> {"}"}</span>
+      <span className="text-white/40">,</span>{"\n"}
+      <span className="text-white/30">{"    "}</span>
+      <span className="text-accent-violet">&quot;outcome&quot;</span>
+      <span className="text-white/40">: {"{"} </span>
+      <span className="text-accent-sky">&quot;status&quot;</span>
+      <span className="text-white/40">: </span>
+      <span className="text-accent-emerald">&quot;success&quot;</span>
+      <span className="text-white/40">, </span>
+      <span className="text-accent-sky">&quot;summary&quot;</span>
+      <span className="text-white/40">: </span>
+      <span className="text-accent-emerald">&quot;Done&quot;</span>
+      <span className="text-white/40"> {"}"}</span>{"\n"}
+      <span className="text-white/30">{"  "}</span>
+      <span className="text-accent-emerald">{"}"}&apos;</span>
+    </code>
   );
 }
 
@@ -251,75 +468,89 @@ export default function LandingPage() {
           />
         </div>
 
-        {/* Hero content */}
-        <div className="relative z-10 max-w-7xl mx-auto w-full">
-          {/* Announcement pill */}
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.2 }}
-            className="mb-12"
-          >
-            <div className="inline-flex items-center gap-2.5 px-4 py-2 rounded-full bg-white/5 border border-white/10 backdrop-blur-sm">
-              <Sparkles className="w-3.5 h-3.5 text-accent-violet" />
-              <span className="text-sm text-white/70">
-                New: Agent Memory Protocol is live.
-              </span>
-            </div>
-          </motion.div>
-
-          {/* Headline */}
-          <motion.h1
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, delay: 0.4 }}
-            className="text-5xl sm:text-6xl md:text-8xl font-light text-white leading-[1.05] tracking-tight mb-8 max-w-4xl"
-          >
-            AI Agents for
-            <br />
-            Memory Optimization.
-          </motion.h1>
-
-          {/* Subtitle */}
-          <motion.p
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.7 }}
-            className="text-base md:text-lg text-white/50 max-w-xl mb-12 leading-relaxed"
-          >
-            Platon works hand in hand with your AI agents to turn memory into a
-            real engine — not a pile of disconnected context windows and
-            experiments.
-          </motion.p>
-
-          {/* CTAs */}
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 1 }}
-            className="flex items-center gap-8 mb-4"
-          >
-            <Link
-              href="/dashboard"
-              className="group inline-flex flex-col"
+        {/* Hero content — two column */}
+        <div className="relative z-10 max-w-7xl mx-auto w-full grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-end">
+          {/* Left — headline + CTAs */}
+          <div>
+            {/* Announcement pill */}
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+              className="mb-10"
             >
-              <span className="flex items-center gap-2 text-sm font-medium text-white tracking-wide">
-                Get started
-                <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-              </span>
-              <span className="h-px w-full bg-white/30 mt-2 group-hover:bg-accent-violet transition-colors" />
-            </Link>
-            <Link
-              href="/dashboard"
-              className="group inline-flex flex-col"
+              <div className="inline-flex items-center gap-2.5 px-4 py-2 rounded-full bg-white/5 border border-white/10 backdrop-blur-sm">
+                <Sparkles className="w-3.5 h-3.5 text-accent-violet" />
+                <span className="text-sm text-white/70">
+                  New: Agent Memory Protocol is live.
+                </span>
+              </div>
+            </motion.div>
+
+            {/* Headline */}
+            <motion.h1
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.7, delay: 0.4 }}
+              className="text-5xl sm:text-6xl md:text-7xl font-light text-white leading-[1.05] tracking-tight mb-6"
             >
-              <span className="flex items-center gap-2 text-sm font-medium text-white tracking-wide">
-                Open dashboard
-                <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-              </span>
-              <span className="h-px w-full bg-white/30 mt-2 group-hover:bg-accent-violet transition-colors" />
-            </Link>
-          </motion.div>
+              AI Agents for
+              <br />
+              Memory
+              <br />
+              Optimization.
+            </motion.h1>
+
+            {/* Subtitle */}
+            <motion.p
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.7 }}
+              className="text-base md:text-lg text-white/50 max-w-md mb-10 leading-relaxed"
+            >
+              Platon works hand in hand with your AI agents to turn memory into a
+              real engine — not a pile of disconnected context windows.
+            </motion.p>
+
+            {/* CTAs */}
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 1 }}
+              className="flex items-center gap-8"
+            >
+              <Link
+                href="/dashboard"
+                className="group inline-flex flex-col"
+              >
+                <span className="flex items-center gap-2 text-sm font-medium text-white tracking-wide">
+                  Get started
+                  <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                </span>
+                <span className="h-px w-full bg-white/30 mt-2 group-hover:bg-accent-violet transition-colors" />
+              </Link>
+              <Link
+                href="/dashboard"
+                className="group inline-flex flex-col"
+              >
+                <span className="flex items-center gap-2 text-sm font-medium text-white tracking-wide">
+                  Open dashboard
+                  <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                </span>
+                <span className="h-px w-full bg-white/30 mt-2 group-hover:bg-accent-violet transition-colors" />
+              </Link>
+            </motion.div>
+          </div>
+
+          {/* Right — code snippet */}
+          <div className="hidden lg:block">
+            <CodeSnippet />
+          </div>
+        </div>
+
+        {/* Mobile code snippet */}
+        <div className="relative z-10 max-w-7xl mx-auto w-full mt-10 lg:hidden">
+          <CodeSnippet />
         </div>
 
         {/* Company logos */}
