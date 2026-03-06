@@ -31,7 +31,8 @@ const matchesFilters = (
   const toolNames = filters?.toolNames ?? [];
   const statusAllowed =
     statuses.length === 0 ||
-    (typeof candidate.retrievalStatus === 'string' && statuses.includes(candidate.retrievalStatus));
+    (typeof candidate.retrievalStatus === 'string' &&
+      (statuses as readonly string[]).includes(candidate.retrievalStatus));
   const toolAllowed =
     toolNames.length === 0 ||
     (candidate.toolNames ?? []).some((toolName) => toolNames.includes(toolName));

@@ -8,6 +8,7 @@ type RankTestResult = RetrievalResult & {
   createdAt?: string;
   namespaceMatch?: 'exact' | 'cross_namespace';
   signal?: 'failure_pattern' | 'semantic';
+  semanticSimilarity?: number;
 };
 
 const makeResult = (
