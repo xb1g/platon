@@ -102,13 +102,13 @@ const sendPaymentRequired = (
     message
   });
 
-const loadNeverminedConfig = (): NeverminedConfig => {
+const loadNeverminedConfig = (): NeverminedConfig | null => {
   const apiKey = process.env.NVM_API_KEY;
   const planId = process.env.NVM_PLAN_ID;
   const agentId = process.env.NVM_AGENT_ID;
 
   if (!apiKey || !planId || !agentId) {
-    throw new Error("Missing Nevermined configuration. Expected NVM_API_KEY, NVM_PLAN_ID, and NVM_AGENT_ID.");
+    return null;
   }
 
   return {
@@ -126,62 +126,68 @@ const createPaymentsClient = (config: NeverminedConfig): PaymentsClient =>
   }) as PaymentsClient;
 
 export const paywallPlugin = fp<PaywallPluginOptions>(async (server, options: PaywallPluginOptions) => {
-    const config = options.config ?? loadNeverminedConfig();
-    const payments = options.payments ?? createPaymentsClient(config);
-    const protectedRoutes = options.protectedRoutes ?? defaultProtectedRoutes;
+  const config = options.config ?? loadNeverminedConfig();
 
-    server.addHook("preHandler", async (request, reply) => {
-      const routeKey = getRouteKey(request);
-      const routeConfig = protectedRoutes[routeKey];
+  if (!config) {
+    server.log.warn("Nevermined configuration missing. Paywall is DISABLED.");
+    return;
+  }
 
-      if (!routeConfig) {
-        return;
-      }
+  const payments = options.payments ?? createPaymentsClient(config);
+  const protectedRoutes = options.protectedRoutes ?? defaultProtectedRoutes;
 
-      const paymentRequired = buildPaymentRequired(config);
+  server.addHook("preHandler", async (request, reply) => {
+    const routeKey = getRouteKey(request);
+    const routeConfig = protectedRoutes[routeKey];
 
-      const token = getToken(request);
+    if (!routeConfig) {
+      return;
+    }
 
-      if (!token) {
-        return sendPaymentRequired(reply, paymentRequired);
-      }
+    const paymentRequired = buildPaymentRequired(config);
 
-      try {
-        const requestInfo = await payments.requests.startProcessingRequest(
-          config.agentId,
-          token,
-          buildRequestedUrl(request),
-          request.method
-        );
+    const token = getToken(request);
 
-        if (!requestInfo.balance.isSubscriber) {
-          return sendPaymentRequired(reply, paymentRequired, "Insufficient credits");
-        }
+    if (!token) {
+      return sendPaymentRequired(reply, paymentRequired);
+    }
 
-        request.paymentContext = {
-          agentRequestId: requestInfo.agentRequestId,
-          credits: routeConfig.credits,
-          paymentRequired,
-          token
-        };
-      } catch {
-        return sendPaymentRequired(reply, paymentRequired, "Invalid x402 access token");
-      }
-    });
-
-    server.addHook("onSend", async (request, reply, payload) => {
-      if (!request.paymentContext || reply.statusCode >= 400) {
-        return payload;
-      }
-
-      const settlement = await payments.requests.redeemCreditsFromRequest(
-        request.paymentContext.agentRequestId,
-        request.paymentContext.token,
-        request.paymentContext.credits
+    try {
+      const requestInfo = await payments.requests.startProcessingRequest(
+        config.agentId,
+        token,
+        buildRequestedUrl(request),
+        request.method
       );
 
-      reply.header("payment-response", encodeHeaderValue(settlement));
+      if (!requestInfo.balance.isSubscriber) {
+        return sendPaymentRequired(reply, paymentRequired, "Insufficient credits");
+      }
 
+      request.paymentContext = {
+        agentRequestId: requestInfo.agentRequestId,
+        credits: routeConfig.credits,
+        paymentRequired,
+        token
+      };
+    } catch {
+      return sendPaymentRequired(reply, paymentRequired, "Invalid x402 access token");
+    }
+  });
+
+  server.addHook("onSend", async (request, reply, payload) => {
+    if (!request.paymentContext || reply.statusCode >= 400) {
       return payload;
-    });
+    }
+
+    const settlement = await payments.requests.redeemCreditsFromRequest(
+      request.paymentContext.agentRequestId,
+      request.paymentContext.token,
+      request.paymentContext.credits
+    );
+
+    reply.header("payment-response", encodeHeaderValue(settlement));
+
+    return payload;
+  });
 });
