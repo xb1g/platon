@@ -235,9 +235,9 @@ git commit -m "feat: add model-backed structured reflection"
 Execution note (2026-03-06T17:16:00Z):
 - Branch: `codex/task-02-structured-reflection`
 - Worktree: `/Users/bunyasit/dev/platon/.worktrees/codex-task-02-structured-reflection`
-- Commit: `pending`
+- Commit: `dd1622e`
 - Verification: `pnpm --filter @memory/worker test -- llm-reflection.test.ts reflect-session.test.ts` (pass), `pnpm --filter @memory/worker typecheck` (pass)
-- Merge: pending into `main`
+- Merge: merged into `main` as `4e0b24d`
 
 ### [ ] Task 3: Enrich the shared contracts for memory provenance and governance
 
