@@ -10,7 +10,8 @@ export type AuthPluginOptions = {
 
 const defaultProtectedRoutes: Record<string, boolean> = {
   "POST /retrieve": true,
-  "POST /sessions": true
+  "POST /sessions": true,
+  "POST /retrieval-feedback": true
 };
 
 const getRouteKey = (request: FastifyRequest) => {

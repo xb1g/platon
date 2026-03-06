@@ -97,7 +97,7 @@ The executor must respect this order:
 - [x] Task 4: Persist richer graph entities and provenance
 - [x] Task 5: Installation, Delivery, and Execution Masterplan
 - [ ] Task 6: Implement vector indexing, hybrid retrieval, and memory governance
-- [ ] Task 7: Build retrieval explanations and usefulness feedback loops
+- [~] Task 7: Build retrieval explanations and usefulness feedback loops
 - [ ] Task 8: Create benchmark tasks and an eval harness
 - [ ] Task 9: Build the overnight orchestration scripts
 - [ ] Task 10: Add metrics, traces, dashboards, and alert thresholds
@@ -514,7 +514,7 @@ Execution note (2026-03-06T18:04:00Z):
 - Verification: `pnpm --filter @memory/api test -- vector-search.test.ts retrieval-ranking.test.ts retrieve.test.ts` (pass), `pnpm --filter @memory/worker test -- memory-quality.test.ts govern-memory.test.ts reflect-session.test.ts` (pass), `pnpm --filter @memory/api typecheck` (pass), `pnpm --filter @memory/worker typecheck` (pass)
 - Merge: Task 6 changes reconciled into `main` by checking out only task-owned files from `codex/task-06-hybrid-retrieval-governance`; unrelated local edits were left untouched
 
-### [ ] Task 7: Build retrieval explanations and usefulness feedback loops
+### [~] Task 7: Build retrieval explanations and usefulness feedback loops
 
 **Files:**
 - Modify: `apps/api/src/lib/retrieval/rank.ts`
@@ -557,6 +557,13 @@ Expected: PASS with usefulness-aware ranking behavior.
 git add apps/api/src/lib/retrieval/rank.ts apps/api/src/routes/retrieve.ts apps/api/src/routes/retrieval-feedback.ts apps/api/tests/retrieval-feedback.test.ts packages/shared/src/retrieval.ts
 git commit -m "feat: add retrieval explanations and feedback loop"
 ```
+
+Execution note (2026-03-06T18:39:00Z):
+- Branch: `codex/task-07-retrieval-feedback-loop`
+- Worktree: `/Users/bunyasit/dev/platon/.worktrees/codex-task-07-retrieval-feedback-loop`
+- Commit: `pending`
+- Verification: `pnpm --filter @memory/api test -- retrieval-feedback.test.ts retrieval-ranking.test.ts retrieve.test.ts` (pass), `pnpm --filter @memory/api typecheck` (pass)
+- Merge: pending; Task 7 was implemented out of dependency order by explicit user instruction while Task 6 remains open in the plan
 
 ### [ ] Task 8: Create benchmark tasks and an eval harness
 

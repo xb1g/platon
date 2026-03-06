@@ -204,4 +204,41 @@ describe('Retrieval Ranking', () => {
 
     expect(ranked[0].id).toBe('pattern-1');
   });
+
+  it('boosts historically useful memories and emits usefulness-aware ranking reasons', () => {
+    const graphResults: RetrievalResult[] = [
+      makeResult({
+        id: 'useful-memory',
+        type: 'learning',
+        confidence: 0.7,
+        usefulness: {
+          usefulCount: 4,
+          harmfulCount: 0,
+          score: 1,
+        },
+      }),
+      makeResult({
+        id: 'neutral-memory',
+        type: 'learning',
+        confidence: 0.7,
+        usefulness: {
+          usefulCount: 0,
+          harmfulCount: 0,
+          score: 0,
+        },
+      }),
+    ];
+
+    const ranked = rankResults(graphResults, []);
+
+    expect(ranked[0].id).toBe('useful-memory');
+    expect(ranked[0].reasons).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          kind: 'usefulness',
+          summary: expect.stringContaining('useful'),
+        }),
+      ])
+    );
+  });
 });

@@ -4,6 +4,7 @@ import { retrievalRequestSchema } from "@memory/shared";
 import { resolveNamespace } from "../lib/memory-namespace.js";
 import { getSession } from "../lib/neo4j.js";
 import { ensureAgentIdentityMatches, getVerifiedAuthContext } from "../lib/verified-auth.js";
+import { getRetrievalFeedbackSummaries } from "../lib/retrieval/feedback-store.js";
 import { graphSearch } from "../lib/retrieval/graph-search.js";
 import { vectorSearch } from "../lib/retrieval/vector-search.js";
 import { rankResults } from "../lib/retrieval/rank.js";
@@ -43,11 +44,22 @@ export const retrieveRoutes: FastifyPluginAsync = async (server) => {
           {
             namespaceId: namespace.namespaceId,
             query: data.query,
-            limit: data.limit,
+            limit: data.limit
           },
           { session }
         );
-        const rankedResults = rankResults(graphResults, vectorResults);
+        const feedbackByMemoryId = await getRetrievalFeedbackSummaries({
+          subscriberId: authContext.subscriberId,
+          agentId: authContext.agentId,
+          agentKind: authContext.agentKind,
+          memoryIds: [...new Set([...graphResults, ...vectorResults].map((result) => result.id))]
+        });
+        const withUsefulness = <T extends (typeof graphResults)[number]>(results: T[]) =>
+          results.map((result) => ({
+            ...result,
+            usefulness: feedbackByMemoryId.get(result.id)
+          }));
+        const rankedResults = rankResults(withUsefulness(graphResults), withUsefulness(vectorResults));
 
         return reply.status(200).send({
           results: rankedResults,
