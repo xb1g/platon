@@ -141,6 +141,46 @@ describe('Retrieval Ranking', () => {
     expect(toolFilterIndex).toBeLessThan(optionalMatchIndex);
   });
 
+  it('combined status+tool filters both appear at the outer session level before OPTIONAL MATCH', async () => {
+    const session = {
+      run: vi.fn().mockResolvedValue({ records: [] }),
+    } as any;
+
+    await graphSearch(
+      {
+        namespaceId: 'ns-123',
+        query: 'postgres migration',
+        limit: 5,
+        filters: { statuses: ['failed'], toolNames: ['psql'] },
+      },
+      { session }
+    );
+
+    const [query] = session.run.mock.calls[0];
+    const optionalMatchIndex = query.indexOf('OPTIONAL MATCH');
+
+    expect(query.indexOf('s.status IN $statuses')).toBeLessThan(optionalMatchIndex);
+    expect(query.indexOf('t.name IN $toolNames')).toBeLessThan(optionalMatchIndex);
+  });
+
+  it('graph search with no filters emits no WHERE clause before OPTIONAL MATCH', async () => {
+    const session = {
+      run: vi.fn().mockResolvedValue({ records: [] }),
+    } as any;
+
+    await graphSearch(
+      { namespaceId: 'ns-123', query: 'redis', limit: 5 },
+      { session }
+    );
+
+    const [query] = session.run.mock.calls[0];
+    const outerMatchEnd = query.indexOf('OPTIONAL MATCH');
+    const segmentBeforeOptional = query.slice(0, outerMatchEnd);
+
+    // No WHERE clause should appear before OPTIONAL MATCH when no filters are provided
+    expect(segmentBeforeOptional).not.toContain('WHERE');
+  });
+
   it('exact namespace graph match beats higher-confidence cross-namespace vector match', () => {
     const graphResults: RankTestResult[] = [
       makeResult({ id: 'graph-1', type: 'learning', confidence: 0.78, namespaceMatch: 'exact' }),

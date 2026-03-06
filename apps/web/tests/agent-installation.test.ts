@@ -5,6 +5,9 @@ import {
   AGENT_INSTALLATION_URL,
   EMBEDDED_AGENT_ID,
   EMBEDDED_PLAN_ID,
+  PLATON_REPORT_EVERY_TASK_SKILL_NAME,
+  PLATON_REPORT_EVERY_TASK_SKILL_REPO_PATH,
+  PLATON_REPORT_EVERY_TASK_SKILL_URL,
   agentInstallationMarkdown,
   agentOperatorPrompt,
 } from "../lib/agent-installation";
@@ -74,11 +77,24 @@ describe("agent installation content", () => {
     expect(agentSkillPage).toContain("AGENT_INSTALLATION_URL");
     expect(agentSkillPage).toContain("EMBEDDED_PLAN_ID");
     expect(agentSkillPage).toContain("EMBEDDED_AGENT_ID");
+    expect(agentSkillPage).toContain("PLATON_REPORT_EVERY_TASK_SKILL_NAME");
+    expect(agentSkillPage).toContain("PLATON_REPORT_EVERY_TASK_SKILL_REPO_PATH");
+    expect(agentSkillPage).toContain("PLATON_REPORT_EVERY_TASK_SKILL_URL");
     expect(agentSkillPage).toContain("Accept: application/json, text/event-stream");
     expect(agentSkillPage).toContain("Mcp-Session-Id");
     expect(agentSkillPage).toContain("payment-signature: <x402-access-token>");
     expect(agentSkillPage).not.toContain("process.env.NVM_PLAN_ID");
     expect(agentSkillPage).not.toContain("process.env.NVM_AGENT_ID");
+  });
+
+  it("publishes the reusable report-every-task skill metadata", () => {
+    expect(PLATON_REPORT_EVERY_TASK_SKILL_NAME).toBe("platon-report-every-task");
+    expect(PLATON_REPORT_EVERY_TASK_SKILL_REPO_PATH).toBe(
+      ".agents/skills/platon-report-every-task",
+    );
+    expect(PLATON_REPORT_EVERY_TASK_SKILL_URL).toContain(
+      PLATON_REPORT_EVERY_TASK_SKILL_REPO_PATH,
+    );
   });
 
   it("does not ship localhost debug ingestion hooks in the root layout", () => {

@@ -6,6 +6,9 @@ import {
   EMBEDDED_AGENT_ID,
   EMBEDDED_PLAN_ID,
   MCP_ENDPOINT_URL,
+  PLATON_REPORT_EVERY_TASK_SKILL_NAME,
+  PLATON_REPORT_EVERY_TASK_SKILL_REPO_PATH,
+  PLATON_REPORT_EVERY_TASK_SKILL_URL,
 } from "@/lib/agent-installation";
 import Link from "next/link";
 import { ArrowLeft, BookOpen, Check, Copy } from "lucide-react";
@@ -41,13 +44,29 @@ Authorization: Bearer <x402-access-token>
 After initialize succeeds:
 Mcp-Session-Id: <session-id-from-initialize>`;
 
-const plainTextContent = `# Platon MCP Service Reference
+const skillInstallSnippet = `git clone https://github.com/xb1g/platon.git
+mkdir -p ~/.codex/skills
+cp -R platon/${PLATON_REPORT_EVERY_TASK_SKILL_REPO_PATH} ~/.codex/skills/
+
+# Then tell your agent to use:
+$${PLATON_REPORT_EVERY_TASK_SKILL_NAME}`;
+
+const plainTextContent = `# Platon Agent Skill
 
 ## Installation
 
 Read the canonical hosted install contract first:
 
 ${AGENT_INSTALLATION_URL}
+
+Install the reusable skill if you want the agent to enforce the loop automatically:
+
+- Skill: ${PLATON_REPORT_EVERY_TASK_SKILL_NAME}
+- Source: ${PLATON_REPORT_EVERY_TASK_SKILL_URL}
+
+Example Codex install:
+
+${skillInstallSnippet}
 
 For the hosted MCP service, generate an x402 token and attach it at the transport layer.
 Use the hosted Nevermined identifiers exactly as shown here:
@@ -303,12 +322,10 @@ export default function AgentSkillPage() {
                 Agent Skill
               </p>
               <h1 className="mt-3 text-4xl md:text-6xl font-light tracking-tight">
-                Platon MCP Service Reference
+                Platon Agent Skill
               </h1>
               <p className="mt-4 max-w-2xl text-base md:text-lg text-text-secondary leading-relaxed">
-                The complete reference for AI agents integrating with Platon via
-                MCP. Everything you need: installation, tool schemas, parameters,
-                return values, and usage patterns.
+                Install a reusable skill that makes customer agents retrieve context before work and report every completed, failed, or partial work item back to Platon.
               </p>
             </div>
           </div>
@@ -337,6 +354,34 @@ export default function AgentSkillPage() {
             . This page is a quick reference, not the source of truth for first-run transport setup.
           </p>
           <p className="text-text-secondary leading-relaxed mb-4">
+            If you want an installable rule set instead of a one-off prompt, use the
+            {" "}
+            <code className="text-accent-emerald text-sm">{PLATON_REPORT_EVERY_TASK_SKILL_NAME}</code>
+            {" "}
+            skill from
+            {" "}
+            <a
+              href={PLATON_REPORT_EVERY_TASK_SKILL_URL}
+              className="text-accent-emerald hover:text-accent-sky transition-colors"
+              target="_blank"
+              rel="noreferrer"
+            >
+              {PLATON_REPORT_EVERY_TASK_SKILL_REPO_PATH}
+            </a>
+            .
+          </p>
+          <p className="text-text-secondary leading-relaxed mb-4">
+            For Codex, install it by copying that folder into
+            {" "}
+            <code className="text-accent-emerald text-sm">~/.codex/skills/</code>
+            . If you want project-scoped behavior instead, copy it into your repo&apos;s
+            {" "}
+            <code className="text-accent-emerald text-sm">.agents/skills/</code>
+            {" "}
+            directory.
+          </p>
+          <CodeBlock>{skillInstallSnippet}</CodeBlock>
+          <p className="text-text-secondary leading-relaxed mb-4">
             For hosted usage, generate an x402 token with a Nevermined subscriber key using the embedded plan and agent IDs, then attach it at the MCP transport layer:
           </p>
           <CodeBlock>{hostedUsageSnippet}</CodeBlock>
@@ -364,8 +409,8 @@ export default function AgentSkillPage() {
           <div className="space-y-4 text-text-secondary leading-relaxed">
             <p>
               Platon is an agent memory system accessible via MCP (Model Context
-              Protocol). It provides three tools that give your AI agents
-              persistent memory across sessions.
+              Protocol). The installable skill packages the operating loop so a
+              customer agent keeps using it instead of forgetting to report back.
             </p>
             <p>The core loop:</p>
             <ol className="list-decimal pl-6 space-y-2">

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Platon Report Every Task"
+  short_description: "Make agents report every task back to Platon"
+  default_prompt: "Use $platon-report-every-task to install Platon memory into this agent and enforce dumping a session after every completed, failed, or partial task."

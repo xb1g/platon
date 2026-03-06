@@ -15,6 +15,7 @@ export type ScoredResult = RankableResult & {
   source: 'graph' | 'vector';
 };
 
+// Weights are relative ranking signals, not normalized probabilities — they intentionally sum to > 1.
 const WEIGHTS = {
   confidence: 0.35,
   freshness: 0.2,
