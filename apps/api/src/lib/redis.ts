@@ -1,3 +1,13 @@
-import { Redis } from 'ioredis';
+import { Redis } from "ioredis";
 
-export const redis: any = new Redis(process.env.REDIS_URL || 'redis://localhost:6379');
+let redisConnection: Redis | null = null;
+
+export const getRedisConnection = () => {
+  if (!redisConnection) {
+    redisConnection = new Redis(process.env.REDIS_URL || "redis://localhost:6379", {
+      maxRetriesPerRequest: null
+    });
+  }
+
+  return redisConnection;
+};
