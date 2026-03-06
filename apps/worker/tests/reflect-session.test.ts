@@ -96,4 +96,93 @@ describe('Reflect Session Job', () => {
     expect(firstSessionParams.sessionKey).not.toBe(secondSessionParams.sessionKey);
     expect(firstLearningParams.learningKey).not.toBe(secondLearningParams.learningKey);
   });
+
+  it('persisted raw session with failures produces namespace merge, session merge, learning merge, and failed session status in Neo4j', async () => {
+    const failureReflection: ReflectionData = {
+      sessionId: 'session-fail-456',
+      wentWell: [],
+      wentWrong: ['Deployment script exited with code 1', 'Missing env var DATABASE_URL'],
+      likelyCauses: ['Config not loaded before run'],
+      reusableTactics: ['Validate env before deploy'],
+      learnings: [{ title: 'Always validate env vars before deploy', confidence: 0.9 }],
+      confidence: 0.85,
+    };
+
+    llmReflect.mockResolvedValue(failureReflection);
+    const session = {
+      run: vi.fn().mockResolvedValue({ records: [] }),
+    } as any;
+
+    const persistedInput = {
+      ...baseNamespace,
+      sessionId: 'session-fail-456',
+      task: { kind: 'deploy', summary: 'Deploy to staging' },
+      outcome: { status: 'failed', summary: 'Deployment failed' },
+      errors: [{ message: 'Deployment script exited with code 1', code: 'EXIT_1', retryable: false }],
+    };
+
+    await reflectSession(persistedInput, { session });
+
+    const resolved = resolveNamespace(baseNamespace);
+
+    expect(session.run).toHaveBeenCalledTimes(3);
+
+    const namespaceMergeParams = session.run.mock.calls[0][1];
+    expect(namespaceMergeParams).toMatchObject({
+      namespaceId: resolved.namespaceId,
+      subscriberId: baseNamespace.subscriberId,
+      agentKind: baseNamespace.agentKind,
+      agentId: baseNamespace.agentId,
+    });
+    expect(session.run.mock.calls[0][0]).toContain('MERGE (ns:MemoryNamespace');
+
+    const sessionMergeParams = session.run.mock.calls[1][1];
+    expect(sessionMergeParams).toMatchObject({
+      namespaceId: resolved.namespaceId,
+      sessionId: failureReflection.sessionId,
+      wentWrong: failureReflection.wentWrong,
+      confidence: failureReflection.confidence,
+    });
+    expect(sessionMergeParams.wentWrong).toHaveLength(2);
+    expect(session.run.mock.calls[1][0]).toContain("s.status = CASE WHEN size($wentWrong) > 0 THEN 'failed' ELSE 'success' END");
+
+    const learningMergeParams = session.run.mock.calls[2][1];
+    expect(learningMergeParams).toMatchObject({
+      namespaceId: resolved.namespaceId,
+      sessionId: failureReflection.sessionId,
+      title: 'Always validate env vars before deploy',
+      confidence: 0.9,
+    });
+    expect(session.run.mock.calls[2][0]).toContain('MERGE (ns)-[:HAS_LEARNING]->(l)');
+  });
+
+  it('persisted raw session with success produces success session status in Neo4j', async () => {
+    const successReflection: ReflectionData = {
+      sessionId: 'session-ok-789',
+      wentWell: ['Deployment completed', 'Health check passed'],
+      wentWrong: [],
+      likelyCauses: [],
+      reusableTactics: ['Use same flow for prod'],
+      learnings: [{ title: 'Staging deploy flow is reliable', confidence: 0.95 }],
+      confidence: 0.92,
+    };
+
+    llmReflect.mockResolvedValue(successReflection);
+    const session = {
+      run: vi.fn().mockResolvedValue({ records: [] }),
+    } as any;
+
+    const persistedInput = {
+      ...baseNamespace,
+      sessionId: 'session-ok-789',
+      task: { kind: 'deploy', summary: 'Deploy to staging' },
+      outcome: { status: 'success', summary: 'Deployment succeeded' },
+    };
+
+    await reflectSession(persistedInput, { session });
+
+    const sessionMergeParams = session.run.mock.calls[1][1];
+    expect(sessionMergeParams.wentWrong).toHaveLength(0);
+    expect(session.run.mock.calls[1][0]).toContain("s.status = CASE WHEN size($wentWrong) > 0 THEN 'failed' ELSE 'success' END");
+  });
 });
