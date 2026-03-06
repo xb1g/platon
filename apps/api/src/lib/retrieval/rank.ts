@@ -21,6 +21,7 @@ const WEIGHTS = {
   sourceBoost: 0.1,
   signal: 0.05,
   quality: 0.1,
+  usefulness: 0.15,
 } as const;
 
 const SOURCE_BOOST: Record<string, number> = {
@@ -72,6 +73,84 @@ const getFreshnessScore = (createdAt?: string): number => {
   return 0.15;
 };
 
+const getUsefulnessScore = (result: RankableResult): number => {
+  if (!result.usefulness) {
+    return 0;
+  }
+
+  return Math.max(-1, Math.min(1, result.usefulness.score));
+};
+
+const pushReason = (
+  reasons: RetrievalResult['reasons'],
+  reason: RetrievalResult['reasons'][number]
+) => {
+  if (reasons.some((existing) => existing.kind === reason.kind && existing.summary === reason.summary)) {
+    return;
+  }
+
+  reasons.push(reason);
+};
+
+const buildRankingReasons = (result: ScoredResult): RetrievalResult['reasons'] => {
+  const reasons: RetrievalResult['reasons'] = [...(result.reasons ?? [])];
+  const namespaceMatch =
+    result.namespaceMatch ?? (result.source === 'graph' ? 'exact' : 'cross_namespace');
+  const signal = result.signal ?? (result.type === 'failure' ? 'failure_pattern' : 'semantic');
+  const freshness = getFreshnessScore(result.createdAt);
+  const usefulnessScore = getUsefulnessScore(result);
+
+  if (namespaceMatch === 'exact') {
+    pushReason(reasons, {
+      kind: 'graph_neighbor',
+      summary: 'Exact namespace match from this agent memory set.',
+      score: 1,
+    });
+  }
+
+  if (signal === 'failure_pattern') {
+    pushReason(reasons, {
+      kind: 'graph_neighbor',
+      summary: 'Matched a prior failure pattern linked in graph memory.',
+      score: 0.9,
+    });
+  }
+
+  if (freshness >= 0.75) {
+    pushReason(reasons, {
+      kind: 'freshness',
+      summary: 'Recent memory is favored over stale near-ties.',
+      score: Number(freshness.toFixed(4)),
+    });
+  }
+
+  if ((result.qualityScore ?? result.confidence) >= 0.7) {
+    pushReason(reasons, {
+      kind: 'provenance_quality',
+      summary: 'Governed memory quality increased confidence in this result.',
+      score: Number((result.qualityScore ?? result.confidence).toFixed(4)),
+    });
+  }
+
+  if (usefulnessScore > 0) {
+    pushReason(reasons, {
+      kind: 'usefulness',
+      summary: 'Earlier retrievals marked this memory as useful.',
+      score: Number(usefulnessScore.toFixed(4)),
+    });
+  }
+
+  if (usefulnessScore < 0) {
+    pushReason(reasons, {
+      kind: 'conflict_penalty',
+      summary: 'Earlier retrievals marked this memory as harmful.',
+      score: Number(Math.abs(usefulnessScore).toFixed(4)),
+    });
+  }
+
+  return reasons;
+};
+
 const computeScore = (result: ScoredResult): number => {
   const confidenceScore = result.confidence * WEIGHTS.confidence;
   const freshnessScore = getFreshnessScore(result.createdAt) * WEIGHTS.freshness;
@@ -83,6 +162,7 @@ const computeScore = (result: ScoredResult): number => {
     (SIGNAL_BOOST[result.signal ?? (result.type === 'failure' ? 'failure_pattern' : 'semantic')] ??
       SIGNAL_BOOST.semantic) * WEIGHTS.signal;
   const qualityScore = (result.qualityScore ?? result.confidence) * WEIGHTS.quality;
+  const usefulnessScore = getUsefulnessScore(result) * WEIGHTS.usefulness;
   const typeBoost = TYPE_BOOST[result.type] ?? 1.0;
   const statusPenalty =
     result.status === 'quarantined' ? 0 :
@@ -95,7 +175,8 @@ const computeScore = (result: ScoredResult): number => {
     exactnessScore +
     sourceScore +
     signalScore +
-    qualityScore
+    qualityScore +
+    usefulnessScore
   ) * typeBoost * statusPenalty;
 };
 
@@ -123,6 +204,16 @@ export const rankResults = (
   const sorted = [...deduped.values()].sort((a, b) => b.score - a.score);
 
   return sorted.map(
-    ({ score, source, createdAt, namespaceMatch, signal, ...rest }): RetrievalResult => rest
+    ({ score, source, createdAt, namespaceMatch, signal, ...rest }): RetrievalResult => ({
+      ...rest,
+      reasons: buildRankingReasons({
+        ...rest,
+        score,
+        source,
+        createdAt,
+        namespaceMatch,
+        signal,
+      }),
+    })
   );
 };

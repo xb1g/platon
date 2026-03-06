@@ -59,7 +59,8 @@ declare module "fastify" {
 
 const defaultProtectedRoutes: Record<string, ProtectedRouteConfig> = {
   "POST /retrieve": { credits: 1n },
-  "POST /sessions": { credits: 1n }
+  "POST /sessions": { credits: 1n },
+  "POST /retrieval-feedback": { credits: 1n }
 };
 
 const getRouteKey = (request: FastifyRequest) => {

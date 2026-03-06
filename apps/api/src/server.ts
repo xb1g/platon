@@ -5,6 +5,7 @@ import { buildNeverminedDiagnostics, loadNeverminedConfig } from "./lib/nevermin
 import { authPlugin } from "./plugins/auth.js";
 import { paywallPlugin, type PaywallPluginOptions } from "./plugins/paywall.js";
 import { retrieveRoutes } from "./routes/retrieve.js";
+import { retrievalFeedbackRoutes } from "./routes/retrieval-feedback.js";
 import { sessionRoutes } from "./routes/sessions.js";
 
 export const buildServer = async (options: { paywall?: PaywallPluginOptions } = {}) => {
@@ -21,6 +22,7 @@ export const buildServer = async (options: { paywall?: PaywallPluginOptions } = 
   await server.register(authPlugin);
   await server.register(sessionRoutes, { prefix: "/sessions" });
   await server.register(retrieveRoutes, { prefix: "/retrieve" });
+  await server.register(retrievalFeedbackRoutes, { prefix: "/retrieval-feedback" });
 
   server.get("/nevermined.json", async () => {
     return buildNeverminedDiagnostics(neverminedConfig);
@@ -67,6 +69,19 @@ export const buildServer = async (options: { paywall?: PaywallPluginOptions } = 
             summary: "Inspect Nevermined runtime configuration and token guidance",
             responses: {
               "200": { description: "Nevermined diagnostics returned" }
+            }
+          }
+        },
+        "/retrieval-feedback": {
+          post: {
+            operationId: "recordRetrievalFeedback",
+            summary: "Record whether a retrieved memory was useful or harmful",
+            requestBody: {
+              required: true
+            },
+            responses: {
+              "200": { description: "Feedback recorded" },
+              "401": { description: "Unauthorized" }
             }
           }
         }

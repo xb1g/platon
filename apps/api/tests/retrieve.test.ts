@@ -3,11 +3,50 @@ import { buildServer } from "../src/server.js";
 import { ensureNamespaceNode, resolveNamespace } from "../src/lib/memory-namespace.js";
 
 vi.mock("../src/lib/retrieval/graph-search.js", () => ({
-  graphSearch: vi.fn().mockResolvedValue([{ id: "graph-1" }])
+  graphSearch: vi.fn().mockResolvedValue([
+    {
+      id: "graph-1",
+      type: "learning",
+      title: "Retry after refreshing the external identifier cache",
+      summary: "A prior failure succeeded after a cache refresh.",
+      confidence: 0.91,
+      reasons: [],
+      sourceProvenance: []
+    }
+  ])
 }));
 
 vi.mock("../src/lib/retrieval/vector-search.js", () => ({
-  vectorSearch: vi.fn().mockResolvedValue([{ id: "vector-1" }])
+  vectorSearch: vi.fn().mockResolvedValue([
+    {
+      id: "vector-1",
+      type: "learning",
+      title: "Use the cached tenant mapping before retrying",
+      summary: "A semantically similar memory from the vector index.",
+      confidence: 0.72,
+      reasons: [],
+      sourceProvenance: []
+    }
+  ])
+}));
+
+const { getRetrievalFeedbackSummaries } = vi.hoisted(() => ({
+  getRetrievalFeedbackSummaries: vi.fn().mockResolvedValue(
+    new Map([
+      [
+        "graph-1",
+        {
+          usefulCount: 3,
+          harmfulCount: 0,
+          score: 1
+        }
+      ]
+    ])
+  )
+}));
+
+vi.mock("../src/lib/retrieval/feedback-store.js", () => ({
+  getRetrievalFeedbackSummaries
 }));
 
 vi.mock("../src/lib/retrieval/rank.js", () => ({
@@ -17,7 +56,19 @@ vi.mock("../src/lib/retrieval/rank.js", () => ({
       type: "learning",
       title: "Retry after refreshing the external identifier cache",
       summary: "A prior failure succeeded after a cache refresh.",
-      confidence: 0.91
+      confidence: 0.91,
+      reasons: [
+        {
+          kind: "usefulness",
+          summary: "Earlier retrievals marked this memory as useful.",
+          score: 1
+        }
+      ],
+      usefulness: {
+        usefulCount: 3,
+        harmfulCount: 0,
+        score: 1
+      }
     }
   ])
 }));
@@ -225,7 +276,19 @@ describe("Retrieve API", () => {
           type: "learning",
           title: "Retry after refreshing the external identifier cache",
           summary: "A prior failure succeeded after a cache refresh.",
-          confidence: 0.91
+          confidence: 0.91,
+          reasons: [
+            {
+              kind: "usefulness",
+              summary: "Earlier retrievals marked this memory as useful.",
+              score: 1
+            }
+          ],
+          usefulness: {
+            usefulCount: 3,
+            harmfulCount: 0,
+            score: 1
+          }
         }
       ],
       subscriberId: "subscriber-runtime",
@@ -254,6 +317,51 @@ describe("Retrieve API", () => {
 
     expect(response.statusCode).toBe(200);
     expect(settlePermissions).toHaveBeenCalledOnce();
+
+    await app.close();
+  });
+
+  it("hydrates auth-scoped usefulness feedback before ranking", async () => {
+    const { app } = await buildPaidServer();
+    const { rankResults } = await import("../src/lib/retrieval/rank.js");
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/retrieve",
+      headers: {
+        "payment-signature": "token-123"
+      },
+      payload: {
+        agentId: "agent-runtime",
+        agentKind: "support-agent",
+        query: "find similar failures"
+      }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(getRetrievalFeedbackSummaries).toHaveBeenCalledWith({
+      subscriberId: "subscriber-runtime",
+      agentId: "agent-runtime",
+      agentKind: "support-agent",
+      memoryIds: ["graph-1", "vector-1"]
+    });
+    expect(rankResults).toHaveBeenCalledWith(
+      [
+        expect.objectContaining({
+          id: "graph-1",
+          usefulness: {
+            usefulCount: 3,
+            harmfulCount: 0,
+            score: 1
+          }
+        })
+      ],
+      [
+        expect.objectContaining({
+          id: "vector-1"
+        })
+      ]
+    );
 
     await app.close();
   });
