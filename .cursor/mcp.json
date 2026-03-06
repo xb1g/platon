@@ -2,9 +2,9 @@
   "mcpServers": {
     "platon": {
       "command": "node",
-      "args": ["apps/mcp/dist/server.js"],
+      "args": ["--import", "tsx", "apps/mcp/src/server.ts"],
       "env": {
-        "API_URL": "https://platon.bigf.me/api"
+        "MEMORY_API_URL": "https://platon.bigf.me/api"
       }
     }
   }

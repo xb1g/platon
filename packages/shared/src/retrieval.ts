@@ -6,8 +6,9 @@ export const retrievalFiltersSchema = z.object({
 });
 
 export const retrievalRequestSchema = z.object({
-  tenantId: z.string().min(1),
   agentId: z.string().min(1),
+  agentKind: z.string().min(1),
+  tenantId: z.string().min(1).optional(),
   query: z.string().min(1),
   limit: z.number().int().positive().max(20).default(5),
   filters: retrievalFiltersSchema.default({

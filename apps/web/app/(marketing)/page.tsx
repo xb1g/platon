@@ -344,6 +344,13 @@ function CurlHighlighted() {
 
 const companies = ["Ordinal", "Nexus", "Mintlify", "Luminai", "Greptile"];
 
+const navItems = [
+  { label: "Products", href: "#products" },
+  { label: "Solutions", href: "#solutions" },
+  { label: "Research", href: "#research" },
+  { label: "Spec", href: "/spec" },
+];
+
 export default function LandingPage() {
   return (
     <div className="relative overflow-hidden">
@@ -365,19 +372,26 @@ export default function LandingPage() {
 
           {/* Center nav */}
           <div className="hidden md:flex items-center gap-8">
-            {["Products", "Solutions", "Research", "Company"].map((item) => (
-              <a
-                key={item}
-                href={`#${item.toLowerCase()}`}
+            {navItems.map((item) => (
+              <Link
+                key={item.label}
+                href={item.href}
                 className="text-sm text-white/60 hover:text-white transition-colors"
               >
-                {item}
-              </a>
+                {item.label}
+              </Link>
             ))}
           </div>
 
           {/* Right CTA */}
-          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3">
+            <Link
+              href="/spec"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-white/10 text-sm text-white/65 hover:text-white hover:border-white/30 transition-all"
+            >
+              Read Spec
+              <ChevronRight className="w-3.5 h-3.5" />
+            </Link>
             <Link
               href="/dashboard"
               className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-white/20 text-sm text-white/80 hover:text-white hover:border-white/40 transition-all"
@@ -523,9 +537,13 @@ export default function LandingPage() {
                 <span className="h-px w-full bg-white/30 mt-2 group-hover:bg-accent-violet transition-colors" />
               </Link>
               <Link
-                href="/dashboard"
+                href="/spec"
                 className="group inline-flex flex-col"
               >
+                <span className="flex items-center gap-2 text-sm font-medium text-white/70 tracking-wide group-hover:text-white">
+                  Read the spec
+                  <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                </span>
                 <span className="h-px w-full bg-white/30 mt-2 group-hover:bg-accent-violet transition-colors" />
               </Link>
             </motion.div>
@@ -744,14 +762,19 @@ export default function LandingPage() {
             </span>
           </div>
           <div className="flex items-center gap-6">
-            {["Product", "Docs", "GitHub", "Twitter"].map((link) => (
-              <a
-                key={link}
-                href="#"
+            {[
+              { label: "Product", href: "#products" },
+              { label: "Spec", href: "/spec" },
+              { label: "Dashboard", href: "/dashboard" },
+              { label: "GitHub", href: "#" },
+            ].map((link) => (
+              <Link
+                key={link.label}
+                href={link.href}
                 className="text-xs text-text-muted hover:text-text-secondary transition-colors"
               >
-                {link}
-              </a>
+                {link.label}
+              </Link>
             ))}
           </div>
           <span className="text-xs text-text-muted">

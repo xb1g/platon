@@ -1,7 +1,160 @@
-import { describe, it, expect } from 'vitest';
+import { afterEach, describe, it, expect, vi } from 'vitest';
+import { buildServer } from '../src/server.js';
+import { resolveNamespace, ensureNamespaceNode } from '../src/lib/memory-namespace.js';
+
+vi.mock('../src/lib/retrieval/graph-search.js', () => ({
+  graphSearch: vi.fn().mockResolvedValue([]),
+}));
+
+vi.mock('../src/lib/retrieval/vector-search.js', () => ({
+  vectorSearch: vi.fn().mockResolvedValue([]),
+}));
+
+vi.mock('../src/lib/neo4j.js', () => ({
+  getSession: () => ({
+    run: vi.fn().mockResolvedValue({ records: [] }),
+    close: vi.fn().mockResolvedValue(undefined),
+  }),
+}));
+
+afterEach(() => {
+  vi.clearAllMocks();
+});
+
+describe('MemoryNamespace resolution', () => {
+  it('resolves namespace using subscriberId, agentKind, and agentId', () => {
+    const ns = resolveNamespace({
+      subscriberId: 'sub-001',
+      agentKind: 'support-agent',
+      agentId: 'agent-abc',
+    });
+
+    expect(ns.namespaceId).toBeDefined();
+    expect(ns.namespaceId.length).toBe(32);
+    expect(ns.subscriberId).toBe('sub-001');
+    expect(ns.agentKind).toBe('support-agent');
+    expect(ns.agentId).toBe('agent-abc');
+  });
+
+  it('produces deterministic namespaceId for same inputs', () => {
+    const params = {
+      subscriberId: 'sub-001',
+      agentKind: 'support-agent',
+      agentId: 'agent-abc',
+    };
+
+    const ns1 = resolveNamespace(params);
+    const ns2 = resolveNamespace(params);
+
+    expect(ns1.namespaceId).toBe(ns2.namespaceId);
+  });
+
+  it('produces different namespaceId for different subscriberIds', () => {
+    const ns1 = resolveNamespace({
+      subscriberId: 'sub-001',
+      agentKind: 'support-agent',
+      agentId: 'agent-abc',
+    });
+
+    const ns2 = resolveNamespace({
+      subscriberId: 'sub-002',
+      agentKind: 'support-agent',
+      agentId: 'agent-abc',
+    });
+
+    expect(ns1.namespaceId).not.toBe(ns2.namespaceId);
+  });
+
+  it('produces different namespaceId for different agentKinds', () => {
+    const ns1 = resolveNamespace({
+      subscriberId: 'sub-001',
+      agentKind: 'support-agent',
+      agentId: 'agent-abc',
+    });
+
+    const ns2 = resolveNamespace({
+      subscriberId: 'sub-001',
+      agentKind: 'billing-agent',
+      agentId: 'agent-abc',
+    });
+
+    expect(ns1.namespaceId).not.toBe(ns2.namespaceId);
+  });
+
+  it('produces different namespaceId for different agentIds', () => {
+    const ns1 = resolveNamespace({
+      subscriberId: 'sub-001',
+      agentKind: 'support-agent',
+      agentId: 'agent-abc',
+    });
+
+    const ns2 = resolveNamespace({
+      subscriberId: 'sub-001',
+      agentKind: 'support-agent',
+      agentId: 'agent-xyz',
+    });
+
+    expect(ns1.namespaceId).not.toBe(ns2.namespaceId);
+  });
+});
+
+describe('ensureNamespaceNode', () => {
+  it('runs MERGE query with correct namespace parameters', async () => {
+    const mockRun = vi.fn().mockResolvedValue({ records: [] });
+    const mockSession = { run: mockRun } as any;
+
+    const ns = await ensureNamespaceNode(mockSession, {
+      subscriberId: 'sub-001',
+      agentKind: 'support-agent',
+      agentId: 'agent-abc',
+    });
+
+    expect(mockRun).toHaveBeenCalledOnce();
+    const [query, params] = mockRun.mock.calls[0];
+    expect(query).toContain('MERGE');
+    expect(query).toContain('MemoryNamespace');
+    expect(params.namespaceId).toBe(ns.namespaceId);
+    expect(params.subscriberId).toBe('sub-001');
+    expect(params.agentKind).toBe('support-agent');
+    expect(params.agentId).toBe('agent-abc');
+  });
+
+  it('returns resolved namespace with stable id', async () => {
+    const mockSession = { run: vi.fn().mockResolvedValue({ records: [] }) } as any;
+
+    const ns = await ensureNamespaceNode(mockSession, {
+      subscriberId: 'sub-001',
+      agentKind: 'support-agent',
+      agentId: 'agent-abc',
+    });
+
+    expect(ns.namespaceId).toBeDefined();
+    expect(ns.namespaceId.length).toBe(32);
+  });
+});
 
 describe('Retrieve API', () => {
-  it('should return ranked memory results', () => {
-    expect(true).toBe(true);
+  it('accepts MCP-originated retrieval payloads without tenantId when subscriber header is present', async () => {
+    const app = await buildServer();
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/retrieve',
+      headers: {
+        'x-platon-subscriber-id': 'local-codex',
+      },
+      payload: {
+        agentId: 'agent-123',
+        agentKind: 'support-agent',
+        query: 'redis failover',
+      },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      results: [],
+    });
+
+    await app.close();
   });
 });

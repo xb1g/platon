@@ -7,3 +7,5 @@ export const driver = neo4j.driver(
     process.env.NEO4J_PASSWORD || 'password'
   )
 );
+
+export const getSession = () => driver.session();

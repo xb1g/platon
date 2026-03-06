@@ -1,3 +1,94 @@
-export const graphSearch = async (query: string) => {
-  return [];
+import neo4j, { type Session as Neo4jSession } from 'neo4j-driver';
+import type { RetrievalResult } from '@memory/shared';
+
+export type GraphSearchParams = {
+  namespaceId: string;
+  query: string;
+  limit: number;
+  filters?: {
+    statuses?: string[];
+    toolNames?: string[];
+  };
+};
+
+export type GraphSearchDependencies = {
+  session: Neo4jSession;
+};
+
+type GraphSearchResult = RetrievalResult & {
+  createdAt?: string;
+  namespaceMatch?: 'exact' | 'cross_namespace';
+  signal?: 'failure_pattern' | 'semantic';
+};
+
+export const graphSearch = async (
+  params: GraphSearchParams,
+  deps?: GraphSearchDependencies
+): Promise<RetrievalResult[]> => {
+  if (!deps?.session) {
+    return [];
+  }
+
+  const statusFilter = params.filters?.statuses?.length
+    ? 'AND s.status IN $statuses'
+    : '';
+
+  const toolFilter = params.filters?.toolNames?.length
+    ? 'AND EXISTS { (s)-[:USED_TOOL]->(t:Tool) WHERE t.name IN $toolNames }'
+    : '';
+
+  const result = await deps.session.run(
+    `MATCH (ns:MemoryNamespace { namespaceId: $namespaceId })-[:HAS_SESSION]->(s:Session)
+     OPTIONAL MATCH (s)-[:PRODUCED]->(l:Learning)
+     WHERE l.title CONTAINS $query OR s.taskSummary CONTAINS $query
+     ${statusFilter}
+     ${toolFilter}
+     WITH l, s,
+       CASE WHEN l IS NOT NULL
+         THEN {
+           id: l.id,
+           type: CASE s.status WHEN 'failed' THEN 'failure' ELSE 'learning' END,
+           title: l.title,
+           summary: coalesce(l.summary, l.title),
+           confidence: coalesce(l.confidence, s.confidence, 0.5),
+           namespaceMatch: 'exact',
+           signal: CASE s.status WHEN 'failed' THEN 'failure_pattern' ELSE 'semantic' END
+         }
+         ELSE {
+           id: s.sessionId,
+           type: CASE s.status WHEN 'failed' THEN 'failure' WHEN 'success' THEN 'success_pattern' ELSE 'session' END,
+           title: s.taskSummary,
+           summary: s.outcomeSummary,
+           confidence: coalesce(s.confidence, 0.5),
+           namespaceMatch: 'exact',
+           signal: CASE s.status WHEN 'failed' THEN 'failure_pattern' ELSE 'semantic' END
+         }
+       END AS result,
+       toString(coalesce(l.createdAt, s.createdAt)) AS createdAt
+     WHERE result.title IS NOT NULL
+     RETURN DISTINCT result, createdAt
+     ORDER BY result.confidence DESC, createdAt DESC
+     LIMIT $limit`,
+    {
+      namespaceId: params.namespaceId,
+      query: params.query,
+      limit: neo4j.int(params.limit),
+      statuses: params.filters?.statuses ?? [],
+      toolNames: params.filters?.toolNames ?? [],
+    }
+  );
+
+  return result.records.map((record: any): GraphSearchResult => {
+    const r = record.get('result');
+    return {
+      id: r.id,
+      type: r.type,
+      title: r.title,
+      summary: r.summary,
+      confidence: typeof r.confidence === 'number' ? r.confidence : 0.5,
+      createdAt: record.get('createdAt') ?? undefined,
+      namespaceMatch: r.namespaceMatch ?? 'exact',
+      signal: r.signal ?? 'semantic',
+    };
+  });
 };

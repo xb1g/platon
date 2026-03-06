@@ -257,6 +257,8 @@ git commit -m "feat: enforce verified namespace inputs in api routes"
 
 ### Task 2B: Introduce namespace-first graph access
 
+Status: completed
+
 **Owner:** Engineer B
 
 **Files:**
@@ -297,6 +299,8 @@ git commit -m "feat: add memory namespace graph helper"
 
 ### Task 3B: Implement namespace-scoped graph retrieval
 
+Status: completed
+
 **Owner:** Engineer B
 
 **Files:**
@@ -335,6 +339,8 @@ git commit -m "feat: add namespace-scoped graph retrieval"
 
 ### Task 4B: Make worker writes namespace-aware
 
+Status: completed
+
 **Owner:** Engineer B
 
 **Files:**
@@ -372,6 +378,8 @@ git commit -m "feat: write reflected memory into namespaces"
 ```
 
 ### Task 5B: Convert MCP server from mock tools to paid namespace-aware tools
+
+Status: completed
 
 **Owner:** Engineer B
 
