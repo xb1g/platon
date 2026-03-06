@@ -9,7 +9,14 @@ export const processReflectionJob = async (job: Job<ReflectSessionInput>) => {
     try {
       await reflectSession(job.data, { session });
     } finally {
-      await session.close();
+      try {
+        await session.close();
+      } catch (closeError) {
+        console.warn(
+          `Failed to close Neo4j session for job ${job.id}:`,
+          closeError instanceof Error ? closeError.message : String(closeError)
+        );
+      }
     }
   }
 };

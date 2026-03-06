@@ -23,9 +23,9 @@ export const loadEnv = (input: NodeJS.ProcessEnv = process.env): AppEnv =>
     PORT_API: input.PORT_API,
     PORT_MCP: input.PORT_MCP,
     PORT_WEB: input.PORT_WEB,
-    DATABASE_URL: input.DATABASE_URL,
+    DATABASE_URL: input.DATABASE_URL ?? input.POSTGRES_URL,
     REDIS_URL: input.REDIS_URL,
     NEO4J_URI: input.NEO4J_URI,
-    NEO4J_USER: input.NEO4J_USER,
+    NEO4J_USER: input.NEO4J_USER ?? input.NEO4J_USERNAME,
     NEO4J_PASSWORD: input.NEO4J_PASSWORD
   });
