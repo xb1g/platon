@@ -119,6 +119,11 @@ describe('Reflect Session Job', () => {
       },
       {
         loadRawSession,
+        sessionStore: {
+          markReflectionProcessing: vi.fn().mockResolvedValue(undefined),
+          markReflectionCompleted: vi.fn().mockResolvedValue(undefined),
+          markReflectionFailed: vi.fn().mockResolvedValue(undefined),
+        },
       } as any
     );
 
