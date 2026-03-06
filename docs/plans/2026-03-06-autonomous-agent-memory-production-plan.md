@@ -98,7 +98,7 @@ The executor must respect this order:
 - [x] Task 5: Installation, Delivery, and Execution Masterplan
 - [ ] Task 6: Implement vector indexing, hybrid retrieval, and memory governance
 - [x] Task 7: Build retrieval explanations and usefulness feedback loops
-- [ ] Task 8: Create benchmark tasks and an eval harness
+- [x] Task 8: Create benchmark tasks and an eval harness
 - [ ] Task 9: Build the overnight orchestration scripts
 - [ ] Task 10: Add metrics, traces, dashboards, and alert thresholds
 - [ ] Task 11: Harden auth, namespace safety, and poisoning defenses
@@ -565,7 +565,7 @@ Execution note (2026-03-06T18:39:00Z):
 - Verification: `pnpm --filter @memory/api test -- retrieval-feedback.test.ts retrieval-ranking.test.ts retrieve.test.ts` (pass), `pnpm --filter @memory/api typecheck` (pass)
 - Merge: merged into `main` after resolving `apps/api/src/server.ts` with current Nevermined diagnostics changes; task was implemented out of dependency order by explicit user instruction while Task 6 remains open in the plan
 
-### [ ] Task 8: Create benchmark tasks and an eval harness
+### [x] Task 8: Create benchmark tasks and an eval harness
 
 **Files:**
 - Create: `apps/api/src/evals/benchmark-tasks.ts`
@@ -607,6 +607,20 @@ Expected: PASS with per-mode metrics and gating logic.
 git add apps/api/src/evals/benchmark-tasks.ts apps/api/src/evals/run-benchmark.ts apps/api/src/evals/score-run.ts apps/api/tests/evals/run-benchmark.test.ts docs/runbooks/evals.md
 git commit -m "feat: add benchmark eval harness"
 ```
+
+Execution note (2026-03-06T17:27:00Z):
+- Branch: `main`
+- Worktree: `/Users/bunyasit/dev/platon`
+- Commit: pending
+- Verification: `pnpm --filter @memory/shared build`, `pnpm --filter @memory/shared test`, `pnpm --filter @memory/api build`, `pnpm --filter @memory/api test`, `pnpm --filter @memory/api test -- run-benchmark.test.ts`
+- Merge: not merged in-session (manual follow-up)
+
+Execution note (2026-03-06T18:52:50Z):
+- Branch: `main`
+- Worktree: `/Users/bunyasit/dev/platon`
+- Commit: pending
+- Verification: `pnpm --filter @memory/shared build` (pass), `pnpm --filter @memory/shared test` (pass), `pnpm --filter @memory/api build` (pass), `pnpm --filter @memory/api test -- run-benchmark.test.ts` (pass; Vitest executed the full API suite with `tests/evals/run-benchmark.test.ts` passing)
+- Merge: Task 8 implementation already present on `main`; plan ledger reconciled with the completed task section
 
 ### [ ] Task 9: Build the overnight orchestration scripts
 

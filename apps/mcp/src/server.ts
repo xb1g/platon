@@ -98,6 +98,19 @@ const createPaymentsService = () => {
   });
 };
 
+function resolveInternalAuthToken(deps: MemoryMcpServerDeps): string {
+  const internalAuthToken =
+    deps.internalAuthToken ?? process.env.PLATON_INTERNAL_AUTH_TOKEN;
+
+  if (!internalAuthToken) {
+    throw new Error(
+      "Missing PLATON_INTERNAL_AUTH_TOKEN. Set it before starting the MCP server."
+    );
+  }
+
+  return internalAuthToken;
+}
+
 const buildToolContext = (
   args: Record<string, unknown>,
   extra: unknown,
@@ -107,8 +120,7 @@ const buildToolContext = (
   agentId: String(args.agentId ?? ""),
   apiBaseUrl: deps.apiBaseUrl ?? process.env.MEMORY_API_URL ?? "http://localhost:3001",
   accessToken: getAccessTokenFromExtra(extra),
-  internalAuthToken:
-    deps.internalAuthToken ?? process.env.PLATON_INTERNAL_AUTH_TOKEN ?? "",
+  internalAuthToken: resolveInternalAuthToken(deps),
 });
 
 export const listMemoryTools = (): ToolSchema[] => [
@@ -242,6 +254,8 @@ export const registerMemoryTools = (
   server: McpServer,
   deps: MemoryMcpServerDeps = {}
 ) => {
+  resolveInternalAuthToken(deps);
+
   const paymentsMcp =
     deps.paymentsMcp ?? (deps.paymentsService ?? createPaymentsService()).mcp;
   const serverName = deps.serverName ?? process.env.MCP_SERVER_NAME ?? "platon-memory";
@@ -313,6 +327,8 @@ export const createMcpServer = (deps: MemoryMcpServerDeps = {}) => {
 export const createMcpApp = (
   deps: MemoryMcpServerDeps = {}
 ): ReturnType<typeof createMcpExpressApp> => {
+  resolveInternalAuthToken(deps);
+
   const host = process.env.MCP_SERVER_HOST ?? "127.0.0.1";
   const app = createMcpExpressApp({ host });
 

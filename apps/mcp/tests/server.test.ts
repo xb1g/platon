@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
+  createMcpApp,
   listMemoryTools,
   registerMemoryTools,
 } from "../src/server.js";
@@ -34,6 +35,7 @@ describe("MCP Server", () => {
       {} as never,
       {
         apiBaseUrl: "https://memory.example",
+        internalAuthToken: "internal-secret",
         paymentsMcp: { attach, configure },
       }
     );
@@ -62,6 +64,17 @@ describe("MCP Server", () => {
       expect.any(Function),
       expect.objectContaining({ credits: 1n })
     );
+  });
+
+  it("fails app startup when internal auth token is missing", () => {
+    expect(() =>
+      createMcpApp({
+        paymentsMcp: {
+          configure: vi.fn(),
+          attach: vi.fn().mockReturnValue({ registerTool: vi.fn() }),
+        },
+      })
+    ).toThrow(/PLATON_INTERNAL_AUTH_TOKEN/);
   });
 
   it("forwards dump_session calls to the API with internal auth header and token-derived payment signature", async () => {
@@ -123,6 +136,7 @@ describe("MCP Server", () => {
       {} as never,
       {
         apiBaseUrl: "https://memory.example",
+        internalAuthToken: "internal-secret",
         paymentsMcp: {
           configure: vi.fn(),
           attach: vi.fn().mockReturnValue({ registerTool }),
