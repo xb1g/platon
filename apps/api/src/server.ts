@@ -1,6 +1,7 @@
 import cors from "@fastify/cors";
 import Fastify from "fastify";
 import { fileURLToPath } from "node:url";
+import { authPlugin } from "./plugins/auth.js";
 import { paywallPlugin, type PaywallPluginOptions } from "./plugins/paywall.js";
 import { retrieveRoutes } from "./routes/retrieve.js";
 import { sessionRoutes } from "./routes/sessions.js";
@@ -15,6 +16,7 @@ export const buildServer = async (options: { paywall?: PaywallPluginOptions } = 
   });
 
   await server.register(paywallPlugin, options.paywall ?? {});
+  await server.register(authPlugin);
   await server.register(sessionRoutes, { prefix: "/sessions" });
   await server.register(retrieveRoutes, { prefix: "/retrieve" });
 

@@ -1,57 +1,61 @@
-import { FastifyPluginAsync } from 'fastify';
-import { z } from 'zod';
-import { retrievalRequestSchema } from '@memory/shared';
-import { resolveNamespace } from '../lib/memory-namespace.js';
-import { getSession } from '../lib/neo4j.js';
-import { graphSearch } from '../lib/retrieval/graph-search.js';
-import { vectorSearch } from '../lib/retrieval/vector-search.js';
-import { rankResults } from '../lib/retrieval/rank.js';
-
-const getSubscriberId = (request: {
-  headers: Record<string, unknown>;
-  tenantId?: string | null;
-}) => {
-  const header = request.headers['x-platon-subscriber-id'];
-  if (typeof header === 'string' && header.length > 0) {
-    return header;
-  }
-
-  return request.tenantId ?? 'local-dev';
-};
+import { FastifyPluginAsync } from "fastify";
+import { z } from "zod";
+import { retrievalRequestSchema } from "@memory/shared";
+import { resolveNamespace } from "../lib/memory-namespace.js";
+import { getSession } from "../lib/neo4j.js";
+import { ensureAgentIdentityMatches, getVerifiedAuthContext } from "../lib/verified-auth.js";
+import { graphSearch } from "../lib/retrieval/graph-search.js";
+import { vectorSearch } from "../lib/retrieval/vector-search.js";
+import { rankResults } from "../lib/retrieval/rank.js";
 
 export const retrieveRoutes: FastifyPluginAsync = async (server) => {
-  server.post('/', async (request, reply) => {
-    const session = getSession();
-
+  server.post("/", async (request, reply) => {
     try {
       const data = retrievalRequestSchema.parse(request.body);
-      const subscriberId = getSubscriberId(request);
+      const authContext = getVerifiedAuthContext(request, reply);
 
-      const namespace = resolveNamespace({
-        subscriberId,
-        agentKind: data.agentKind,
-        agentId: data.agentId,
-      });
+      if (!authContext) {
+        return reply;
+      }
 
-      const graphResults = await graphSearch(
-        {
-          namespaceId: namespace.namespaceId,
-          query: data.query,
-          limit: data.limit,
-          filters: data.filters,
-        },
-        { session }
-      );
-      const vectorResults = await vectorSearch(data.query);
-      const rankedResults = rankResults(graphResults, vectorResults);
-      return reply.status(200).send({ results: rankedResults, subscriberId });
+      if (!ensureAgentIdentityMatches(data, authContext, reply)) {
+        return reply;
+      }
+
+      const session = getSession();
+      try {
+        const namespace = resolveNamespace({
+          subscriberId: authContext.subscriberId,
+          agentKind: authContext.agentKind,
+          agentId: authContext.agentId
+        });
+
+        const graphResults = await graphSearch(
+          {
+            namespaceId: namespace.namespaceId,
+            query: data.query,
+            limit: data.limit,
+            filters: data.filters
+          },
+          { session }
+        );
+        const vectorResults = await vectorSearch(data.query);
+        const rankedResults = rankResults(graphResults, vectorResults);
+
+        return reply.status(200).send({
+          results: rankedResults,
+          subscriberId: authContext.subscriberId,
+          agentId: authContext.agentId,
+          agentKind: authContext.agentKind
+        });
+      } finally {
+        await session.close();
+      }
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return reply.status(400).send({ error: 'Invalid payload', details: error.errors });
+        return reply.status(400).send({ error: "Invalid payload", details: error.errors });
       }
-      return reply.status(500).send({ error: 'Internal server error' });
-    } finally {
-      await session.close();
+      return reply.status(500).send({ error: "Internal server error" });
     }
   });
 };

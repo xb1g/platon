@@ -1,46 +1,96 @@
-import { afterEach, describe, it, expect, vi } from 'vitest';
-import { buildServer } from '../src/server.js';
-import { resolveNamespace, ensureNamespaceNode } from '../src/lib/memory-namespace.js';
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { buildServer } from "../src/server.js";
+import { ensureNamespaceNode, resolveNamespace } from "../src/lib/memory-namespace.js";
 
-vi.mock('../src/lib/retrieval/graph-search.js', () => ({
-  graphSearch: vi.fn().mockResolvedValue([]),
+vi.mock("../src/lib/retrieval/graph-search.js", () => ({
+  graphSearch: vi.fn().mockResolvedValue([{ id: "graph-1" }])
 }));
 
-vi.mock('../src/lib/retrieval/vector-search.js', () => ({
-  vectorSearch: vi.fn().mockResolvedValue([]),
+vi.mock("../src/lib/retrieval/vector-search.js", () => ({
+  vectorSearch: vi.fn().mockResolvedValue([{ id: "vector-1" }])
 }));
 
-vi.mock('../src/lib/neo4j.js', () => ({
+vi.mock("../src/lib/retrieval/rank.js", () => ({
+  rankResults: vi.fn().mockReturnValue([
+    {
+      id: "memory-1",
+      type: "learning",
+      title: "Retry after refreshing the external identifier cache",
+      summary: "A prior failure succeeded after a cache refresh.",
+      confidence: 0.91
+    }
+  ])
+}));
+
+vi.mock("../src/lib/neo4j.js", () => ({
   getSession: () => ({
     run: vi.fn().mockResolvedValue({ records: [] }),
-    close: vi.fn().mockResolvedValue(undefined),
-  }),
+    close: vi.fn().mockResolvedValue(undefined)
+  })
 }));
+
+const paywallConfig = {
+  apiKey: "sandbox:test-key",
+  environment: "sandbox" as const,
+  planId: "plan-runtime",
+  agentId: "agent-runtime"
+};
+
+const buildPaidServer = async () => {
+  const startProcessingRequest = vi.fn().mockResolvedValue({
+    agentRequestId: "request-123",
+    agentId: "agent-runtime",
+    agentKind: "support-agent",
+    balance: {
+      isSubscriber: true
+    },
+    planId: "plan-runtime",
+    subscriberId: "subscriber-runtime"
+  });
+
+  const redeemCreditsFromRequest = vi.fn().mockResolvedValue({
+    success: true
+  });
+
+  const app = await buildServer({
+    paywall: {
+      config: paywallConfig,
+      payments: {
+        requests: {
+          redeemCreditsFromRequest,
+          startProcessingRequest
+        }
+      }
+    }
+  });
+
+  return { app, redeemCreditsFromRequest };
+};
 
 afterEach(() => {
   vi.clearAllMocks();
 });
 
-describe('MemoryNamespace resolution', () => {
-  it('resolves namespace using subscriberId, agentKind, and agentId', () => {
+describe("MemoryNamespace resolution", () => {
+  it("resolves namespace using subscriberId, agentKind, and agentId", () => {
     const ns = resolveNamespace({
-      subscriberId: 'sub-001',
-      agentKind: 'support-agent',
-      agentId: 'agent-abc',
+      subscriberId: "sub-001",
+      agentKind: "support-agent",
+      agentId: "agent-abc"
     });
 
     expect(ns.namespaceId).toBeDefined();
     expect(ns.namespaceId.length).toBe(32);
-    expect(ns.subscriberId).toBe('sub-001');
-    expect(ns.agentKind).toBe('support-agent');
-    expect(ns.agentId).toBe('agent-abc');
+    expect(ns.subscriberId).toBe("sub-001");
+    expect(ns.agentKind).toBe("support-agent");
+    expect(ns.agentId).toBe("agent-abc");
   });
 
-  it('produces deterministic namespaceId for same inputs', () => {
+  it("produces deterministic namespaceId for same inputs", () => {
     const params = {
-      subscriberId: 'sub-001',
-      agentKind: 'support-agent',
-      agentId: 'agent-abc',
+      subscriberId: "sub-001",
+      agentKind: "support-agent",
+      agentId: "agent-abc"
     };
 
     const ns1 = resolveNamespace(params);
@@ -49,83 +99,83 @@ describe('MemoryNamespace resolution', () => {
     expect(ns1.namespaceId).toBe(ns2.namespaceId);
   });
 
-  it('produces different namespaceId for different subscriberIds', () => {
+  it("produces different namespaceId for different subscriberIds", () => {
     const ns1 = resolveNamespace({
-      subscriberId: 'sub-001',
-      agentKind: 'support-agent',
-      agentId: 'agent-abc',
+      subscriberId: "sub-001",
+      agentKind: "support-agent",
+      agentId: "agent-abc"
     });
 
     const ns2 = resolveNamespace({
-      subscriberId: 'sub-002',
-      agentKind: 'support-agent',
-      agentId: 'agent-abc',
+      subscriberId: "sub-002",
+      agentKind: "support-agent",
+      agentId: "agent-abc"
     });
 
     expect(ns1.namespaceId).not.toBe(ns2.namespaceId);
   });
 
-  it('produces different namespaceId for different agentKinds', () => {
+  it("produces different namespaceId for different agentKinds", () => {
     const ns1 = resolveNamespace({
-      subscriberId: 'sub-001',
-      agentKind: 'support-agent',
-      agentId: 'agent-abc',
+      subscriberId: "sub-001",
+      agentKind: "support-agent",
+      agentId: "agent-abc"
     });
 
     const ns2 = resolveNamespace({
-      subscriberId: 'sub-001',
-      agentKind: 'billing-agent',
-      agentId: 'agent-abc',
+      subscriberId: "sub-001",
+      agentKind: "billing-agent",
+      agentId: "agent-abc"
     });
 
     expect(ns1.namespaceId).not.toBe(ns2.namespaceId);
   });
 
-  it('produces different namespaceId for different agentIds', () => {
+  it("produces different namespaceId for different agentIds", () => {
     const ns1 = resolveNamespace({
-      subscriberId: 'sub-001',
-      agentKind: 'support-agent',
-      agentId: 'agent-abc',
+      subscriberId: "sub-001",
+      agentKind: "support-agent",
+      agentId: "agent-abc"
     });
 
     const ns2 = resolveNamespace({
-      subscriberId: 'sub-001',
-      agentKind: 'support-agent',
-      agentId: 'agent-xyz',
+      subscriberId: "sub-001",
+      agentKind: "support-agent",
+      agentId: "agent-xyz"
     });
 
     expect(ns1.namespaceId).not.toBe(ns2.namespaceId);
   });
 });
 
-describe('ensureNamespaceNode', () => {
-  it('runs MERGE query with correct namespace parameters', async () => {
+describe("ensureNamespaceNode", () => {
+  it("runs MERGE query with correct namespace parameters", async () => {
     const mockRun = vi.fn().mockResolvedValue({ records: [] });
     const mockSession = { run: mockRun } as any;
 
     const ns = await ensureNamespaceNode(mockSession, {
-      subscriberId: 'sub-001',
-      agentKind: 'support-agent',
-      agentId: 'agent-abc',
+      subscriberId: "sub-001",
+      agentKind: "support-agent",
+      agentId: "agent-abc"
     });
 
     expect(mockRun).toHaveBeenCalledOnce();
     const [query, params] = mockRun.mock.calls[0];
-    expect(query).toContain('MERGE');
-    expect(query).toContain('MemoryNamespace');
+    expect(query).toContain("MERGE");
+    expect(query).toContain("MemoryNamespace");
     expect(params.namespaceId).toBe(ns.namespaceId);
-    expect(params.subscriberId).toBe('sub-001');
-    expect(params.agentKind).toBe('support-agent');
-    expect(params.agentId).toBe('agent-abc');
+    expect(params.subscriberId).toBe("sub-001");
+    expect(params.agentKind).toBe("support-agent");
+    expect(params.agentId).toBe("agent-abc");
   });
 
-  it('returns resolved namespace with stable id', async () => {
+  it("returns resolved namespace with stable id", async () => {
     const mockSession = { run: vi.fn().mockResolvedValue({ records: [] }) } as any;
 
     const ns = await ensureNamespaceNode(mockSession, {
-      subscriberId: 'sub-001',
-      agentKind: 'support-agent',
-      agentId: 'agent-abc',
+      subscriberId: "sub-001",
+      agentKind: "support-agent",
+      agentId: "agent-abc"
     });
 
     expect(ns.namespaceId).toBeDefined();
@@ -133,27 +183,86 @@ describe('ensureNamespaceNode', () => {
   });
 });
 
-describe('Retrieve API', () => {
-  it('accepts MCP-originated retrieval payloads without tenantId when subscriber header is present', async () => {
+describe("Retrieve API", () => {
+  it("requires verified auth context for protected requests", async () => {
     const app = await buildServer();
 
     const response = await app.inject({
-      method: 'POST',
-      url: '/retrieve',
+      method: "POST",
+      url: "/retrieve",
+      payload: {
+        agentId: "agent-runtime",
+        agentKind: "support-agent",
+        query: "find similar failures"
+      }
+    });
+
+    expect(response.statusCode).toBe(401);
+    expect(response.json()).toEqual({
+      error: "Unauthorized"
+    });
+
+    await app.close();
+  });
+
+  it("uses verified subscriber identity instead of caller-supplied tenant data", async () => {
+    const { app } = await buildPaidServer();
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/retrieve",
       headers: {
-        'x-platon-subscriber-id': 'local-codex',
+        "payment-signature": "token-123"
       },
       payload: {
-        agentId: 'agent-123',
-        agentKind: 'support-agent',
-        query: 'redis failover',
-      },
+        tenantId: "tenant-from-body",
+        agentId: "agent-runtime",
+        agentKind: "support-agent",
+        query: "find similar failures"
+      }
     });
 
     expect(response.statusCode).toBe(200);
-    expect(response.json()).toMatchObject({
-      results: [],
+    expect(response.json()).toEqual({
+      results: [
+        {
+          id: "memory-1",
+          type: "learning",
+          title: "Retry after refreshing the external identifier cache",
+          summary: "A prior failure succeeded after a cache refresh.",
+          confidence: 0.91
+        }
+      ],
+      subscriberId: "subscriber-runtime",
+      agentId: "agent-runtime",
+      agentKind: "support-agent"
     });
+
+    await app.close();
+  });
+
+  it("rejects requests whose agent identity does not match the verified auth context", async () => {
+    const { app, redeemCreditsFromRequest } = await buildPaidServer();
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/retrieve",
+      headers: {
+        "payment-signature": "token-123"
+      },
+      payload: {
+        agentId: "agent-runtime",
+        agentKind: "billing-agent",
+        query: "find similar failures"
+      }
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect(response.json()).toEqual({
+      error: "Forbidden",
+      message: "Payload agent identity does not match verified auth context"
+    });
+    expect(redeemCreditsFromRequest).not.toHaveBeenCalled();
 
     await app.close();
   });

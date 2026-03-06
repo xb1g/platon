@@ -1,27 +1,52 @@
-import fp from 'fastify-plugin';
-import { FastifyPluginAsync } from 'fastify';
+import fp from "fastify-plugin";
+import type { FastifyPluginAsync, FastifyRequest } from "fastify";
+import type { PaymentAuthContext } from "./paywall.js";
 
-export const authPlugin: FastifyPluginAsync = fp(async (server) => {
-  server.decorateRequest('tenantId', null);
+export type AuthContext = PaymentAuthContext;
 
-  server.addHook('preHandler', async (request, reply) => {
-    const authHeader = request.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return reply.status(401).send({ error: 'Unauthorized' });
+export type AuthPluginOptions = {
+  protectedRoutes?: Record<string, boolean>;
+};
+
+const defaultProtectedRoutes: Record<string, boolean> = {
+  "POST /retrieve": true,
+  "POST /sessions": true
+};
+
+const getRouteKey = (request: FastifyRequest) => {
+  const url = request.url.split("?")[0] ?? request.url;
+  return `${request.method.toUpperCase()} ${url}`;
+};
+
+const normalizeAuthContext = (authContext: PaymentAuthContext): AuthContext => ({
+  subscriberId: authContext.subscriberId,
+  agentId: authContext.agentId,
+  agentKind: authContext.agentKind,
+  planId: authContext.planId
+});
+
+export const authPlugin = fp<AuthPluginOptions>(async (server, options) => {
+  const protectedRoutes = options.protectedRoutes ?? defaultProtectedRoutes;
+
+  server.decorateRequest("authContext", null);
+
+  server.addHook("preHandler", async (request, reply) => {
+    if (!protectedRoutes[getRouteKey(request)]) {
+      return;
     }
-    
-    const token = authHeader.split(' ')[1];
-    // Mock token validation
-    if (token === 'invalid') {
-      return reply.status(401).send({ error: 'Unauthorized' });
+
+    const authContext = request.paymentContext?.authContext;
+
+    if (!authContext) {
+      return reply.status(401).send({ error: "Unauthorized" });
     }
-    
-    request.tenantId = 'tenant-1';
+
+    request.authContext = normalizeAuthContext(authContext);
   });
 });
 
-declare module 'fastify' {
+declare module "fastify" {
   interface FastifyRequest {
-    tenantId: string | null;
+    authContext: AuthContext | null;
   }
 }

@@ -110,6 +110,23 @@ describe("sessionPayloadSchema", () => {
 
     expect(result.success).toBe(true);
   });
+
+  it("requires agentKind for runtime namespace resolution", () => {
+    const result = sessionPayloadSchema.safeParse({
+      agentId: "agent_123",
+      sessionId: "session_123",
+      task: {
+        kind: "support-ticket",
+        summary: "Investigate failed order sync"
+      },
+      outcome: {
+        status: "failed",
+        summary: "Order sync failed due to a missing external identifier"
+      }
+    });
+
+    expect(result.success).toBe(false);
+  });
 });
 
 describe("reflectionSchema", () => {
@@ -175,6 +192,15 @@ describe("retrievalRequestSchema", () => {
     });
 
     expect(result.success).toBe(true);
+  });
+
+  it("requires agentKind for runtime retrieval payloads", () => {
+    const result = retrievalRequestSchema.safeParse({
+      agentId: "agent_123",
+      query: "Find similar retrieval failures"
+    });
+
+    expect(result.success).toBe(false);
   });
 });
 
