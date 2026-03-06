@@ -20,7 +20,7 @@ export const agentOperatorPrompt = `Install Platon memory for this agent.
 2. Keep these identity fields stable across every run:
    - \`agentKind\`
    - \`agentId\`
-3. At the start of every new task, call \`memory.retrieve_context\` with a plain-language summary of the work before planning or execution.
+3. Make \`memory.retrieve_context\` the first real action on every new task. Call it with a plain-language summary of the work before planning or execution.
 4. \`memory.retrieve_context\` is cheap, so call it again whenever the task changes shape, a new bounded subtask starts, or you are entering a risky area.
 5. If you are handling an error, risky step, or repeated issue, call \`memory.get_similar_failures\`.
 6. After every task, call \`memory.dump_session\` with the task, outcome, tools, key events, errors, and artifacts.
@@ -45,7 +45,7 @@ Install Platon memory for this agent.
 2. Keep these identity fields stable across every run:
    - agentKind
    - agentId
-3. At the start of every new task, call \`memory.retrieve_context\` with a plain-language summary of the work before planning or execution.
+3. Make \`memory.retrieve_context\` the first real action on every new task. Call it with a plain-language summary of the work before planning or execution.
 4. \`memory.retrieve_context\` is cheap, so call it again whenever the task changes shape, a new bounded subtask starts, or you are entering a risky area.
 5. If you are handling an error, risky step, or repeated issue, call \`memory.get_similar_failures\`.
 6. After every task, call \`memory.dump_session\` with the task, outcome, tools, key events, errors, and artifacts.
@@ -69,8 +69,19 @@ Teach the agent to retrieve early rather than waiting until it is stuck.
 
 - Call \`memory.retrieve_context\` immediately when a new task arrives.
 - Call it again when the goal changes, a bounded subtask starts, or the agent is about to take a risky action.
+- Do not skip retrieval because the task looks small, familiar, or urgent.
 - Prefer an extra retrieval call over skipping context on startup.
 - Use plain-language summaries so the retrieval query carries enough signal.
+
+## Task Startup Sequence
+
+The default startup sequence for each new task is:
+
+1. Receive the task.
+2. Call \`memory.retrieve_context\` immediately with a plain-language summary.
+3. If the area is failure-prone or the task already includes an error, call \`memory.get_similar_failures\`.
+4. Plan and execute using the retrieved context.
+5. Call \`memory.dump_session\` before handoff.
 
 This workflow is useful for coding agents, research agents, browser agents, support agents, workflow agents, autonomous operations agents, and other task-oriented assistants.
 

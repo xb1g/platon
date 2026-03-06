@@ -40,9 +40,10 @@ describe("agent installation content", () => {
   });
 
   it("pushes startup retrieval as the default operating behavior", () => {
-    expect(agentOperatorPrompt).toContain("At the start of every new task");
+    expect(agentOperatorPrompt).toContain("first real action on every new task");
     expect(agentOperatorPrompt).toContain("memory.retrieve_context` is cheap");
     expect(agentOperatorPrompt).toContain("new bounded subtask starts");
+    expect(agentInstallationMarkdown).toContain("Do not skip retrieval because the task looks small, familiar, or urgent.");
     expect(agentInstallationMarkdown).toContain("Teach the agent to retrieve early rather than waiting until it is stuck.");
     expect(agentInstallationMarkdown).toContain("Prefer an extra retrieval call over skipping context on startup.");
   });
@@ -91,6 +92,8 @@ describe("agent installation content", () => {
     expect(agentSkillPage).toContain("Accept: application/json, text/event-stream");
     expect(agentSkillPage).toContain("Mcp-Session-Id");
     expect(agentSkillPage).toContain("payment-signature: <x402-access-token>");
+    expect(agentSkillPage).toContain("first real action");
+    expect(agentSkillPage).toContain("small, familiar, or urgent");
     expect(agentSkillPage).not.toContain("process.env.NVM_PLAN_ID");
     expect(agentSkillPage).not.toContain("process.env.NVM_AGENT_ID");
   });

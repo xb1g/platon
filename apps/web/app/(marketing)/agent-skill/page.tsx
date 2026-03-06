@@ -107,7 +107,7 @@ Parameters:
 Returns: Numbered results with [confidence] title: summary
 Each result includes a confidence score from 0 to 1.
 
-When to call: At task startup before planning or execution. Retrieval is cheap, so call again when the task changes shape or a bounded subtask begins.
+When to call: Make this the first real action at task startup before planning or execution. Retrieval is cheap, so call again when the task changes shape or a bounded subtask begins.
 
 Example:
 memory.retrieve_context({
@@ -173,9 +173,10 @@ memory.dump_session({
 
 ## Workflow Summary
 
-Before every task:
-[ ] Call memory.retrieve_context immediately at task startup with a descriptive query
+At task startup:
+[ ] Make memory.retrieve_context your first real action with a descriptive query
 [ ] Call memory.retrieve_context again if the goal changes or a bounded subtask starts
+[ ] Do not skip retrieval because the task looks small, familiar, or urgent
 [ ] If error-prone area, call memory.get_similar_failures
 [ ] Apply high-confidence results (>0.7) to inform approach
 
@@ -198,6 +199,7 @@ Note: MCP is the primary interface. Use HTTP endpoints when MCP is not available
 - Always dump sessions even for failures — they produce the most valuable learnings
 - Retrieve at task startup by default because retrieve_context is cheap
 - Use descriptive, natural-language queries in retrieve_context
+- Do not skip retrieval because the task looks small, familiar, or urgent
 - Retrieve again when the task branches into a distinct bounded subtask
 - Check get_similar_failures before retrying known error-prone areas
 - High-confidence results (>0.7) should strongly inform your approach
@@ -419,8 +421,8 @@ export default function AgentSkillPage() {
             <ol className="list-decimal pl-6 space-y-2">
               <li>
                 <strong className="text-text-primary">BEFORE</strong> each task
-                — retrieve relevant context at task startup, and retrieve again
-                when the task branches into a new bounded subtask
+                — make retrieval the first real action at task startup, then
+                retrieve again when the task branches into a new bounded subtask
               </li>
               <li>
                 <strong className="text-text-primary">EXECUTE</strong> the task
@@ -441,9 +443,9 @@ export default function AgentSkillPage() {
         {/* Tool: memory.retrieve_context */}
         <Section title="Tool: memory.retrieve_context">
           <p className="text-text-secondary leading-relaxed mb-4">
-            Retrieve relevant context for a task. Call this at task startup to
-            inform your approach with past learnings, and call it again when
-            the task changes shape.
+            Retrieve relevant context for a task. Make this the first real
+            action at task startup so the agent begins with past learnings, then
+            call it again when the task changes shape.
           </p>
 
           <h3 className="text-lg font-semibold text-text-primary mt-6 mb-3">
@@ -470,8 +472,9 @@ export default function AgentSkillPage() {
             When to call
           </h3>
           <p className="text-text-secondary text-sm leading-relaxed">
-            At task startup before planning or execution. Retrieval is cheap, so
-            call again when the goal changes or a bounded subtask begins.
+            Make this the first real action at task startup before planning or
+            execution. Retrieval is cheap, so call again when the goal changes
+            or a bounded subtask begins.
           </p>
 
           <h3 className="text-lg font-semibold text-text-primary mt-6 mb-3">
@@ -587,16 +590,20 @@ export default function AgentSkillPage() {
           <div className="space-y-6">
             <div>
               <h3 className="text-lg font-semibold text-text-primary mb-3">
-                Before every task
+                At task startup
               </h3>
               <ul className="space-y-2 text-text-secondary text-sm">
                 <li className="flex items-start gap-2">
                   <span className="text-accent-violet mt-0.5">&#9744;</span>
-                  Call <code className="text-accent-emerald">memory.retrieve_context</code> immediately at task startup with a descriptive query
+                  Make <code className="text-accent-emerald">memory.retrieve_context</code> your first real action with a descriptive query
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-accent-violet mt-0.5">&#9744;</span>
                   Call <code className="text-accent-emerald">memory.retrieve_context</code> again if the goal changes or a bounded subtask starts
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-accent-violet mt-0.5">&#9744;</span>
+                  Do not skip retrieval because the task looks small, familiar, or urgent
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-accent-violet mt-0.5">&#9744;</span>
@@ -679,6 +686,11 @@ export default function AgentSkillPage() {
             <li className="flex items-start gap-3">
               <span className="text-accent-violet mt-1 shrink-0">&#8226;</span>
               Use descriptive, natural-language queries in retrieve_context
+            </li>
+            <li className="flex items-start gap-3">
+              <span className="text-accent-violet mt-1 shrink-0">&#8226;</span>
+              Do not skip retrieval because the task looks small, familiar, or
+              urgent
             </li>
             <li className="flex items-start gap-3">
               <span className="text-accent-violet mt-1 shrink-0">&#8226;</span>

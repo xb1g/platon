@@ -9,7 +9,7 @@ description: "Use when configuring or prompting a customer-facing agent to insta
 
 Install Platon as a mandatory operating loop, not optional telemetry. Any agent using this skill must report back to Platon after each meaningful work item, including success, failure, and partial completion.
 
-`memory.retrieve_context` is cheap enough to be the default move at task startup. Bias toward calling it early and often so the agent begins with context instead of reconstructing state from scratch.
+`memory.retrieve_context` is cheap enough to be the default move at task startup. Bias toward calling it early and often so the agent begins with context instead of reconstructing state from scratch. The first real action after a task arrives should usually be retrieval.
 
 Read the canonical hosted contract first:
 
@@ -43,6 +43,7 @@ Teach customer agents to treat retrieval as the default startup behavior:
 
 - call `memory.retrieve_context` immediately when a new task arrives
 - call it again when the task goal changes, a new subtask begins, or the agent is about to make a risky decision
+- do not skip retrieval just because the task looks small, familiar, or urgent
 - do not wait for confusion or failure before retrieving context
 - describe the work in plain language so retrieval has enough signal to return useful memory
 
@@ -95,7 +96,7 @@ Install Platon memory for this agent.
 2. Keep these identity fields stable across every run:
    - agentKind
    - agentId
-3. At the start of every new task, call memory.retrieve_context with a plain-language summary of the work before planning or execution.
+3. Make memory.retrieve_context the first real action on every new task. Call it with a plain-language summary of the work before planning or execution.
 4. memory.retrieve_context is cheap, so call it again whenever the task changes shape, a new bounded subtask starts, or you are entering a risky area.
 5. If you are handling an error, risky step, or repeated issue, call memory.get_similar_failures.
 6. After every task, call memory.dump_session with the task, outcome, tools, key events, errors, and artifacts.
