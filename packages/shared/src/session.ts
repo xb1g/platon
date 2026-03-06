@@ -38,8 +38,9 @@ export const outcomeSchema = z.object({
 });
 
 export const sessionPayloadSchema = z.object({
-  tenantId: z.string().min(1),
   agentId: z.string().min(1),
+  agentKind: z.string().min(1),
+  tenantId: z.string().min(1).optional(),
   sessionId: z.string().min(1),
   inputContextSummary: z.string().min(1).optional(),
   task: taskSchema,

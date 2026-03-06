@@ -11,8 +11,8 @@ import {
 describe("sessionPayloadSchema", () => {
   it("accepts a valid agent session payload with structured context", () => {
     const result = sessionPayloadSchema.safeParse({
-      tenantId: "tenant_123",
       agentId: "agent_123",
+      agentKind: "support-agent",
       sessionId: "session_123",
       inputContextSummary: "The agent received a support escalation and prior run notes.",
       task: {
@@ -92,6 +92,41 @@ describe("sessionPayloadSchema", () => {
 
     expect(result.success).toBe(false);
   });
+
+  it("does not require tenantId for runtime namespace resolution", () => {
+    const result = sessionPayloadSchema.safeParse({
+      agentId: "agent_123",
+      agentKind: "support-agent",
+      sessionId: "session_123",
+      task: {
+        kind: "support-ticket",
+        summary: "Investigate failed order sync"
+      },
+      outcome: {
+        status: "failed",
+        summary: "Order sync failed due to a missing external identifier"
+      }
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it("requires agentKind for runtime namespace resolution", () => {
+    const result = sessionPayloadSchema.safeParse({
+      agentId: "agent_123",
+      sessionId: "session_123",
+      task: {
+        kind: "support-ticket",
+        summary: "Investigate failed order sync"
+      },
+      outcome: {
+        status: "failed",
+        summary: "Order sync failed due to a missing external identifier"
+      }
+    });
+
+    expect(result.success).toBe(false);
+  });
 });
 
 describe("reflectionSchema", () => {
@@ -122,8 +157,8 @@ describe("reflectionSchema", () => {
 describe("retrievalRequestSchema", () => {
   it("accepts a retrieval request with ranking inputs", () => {
     const result = retrievalRequestSchema.safeParse({
-      tenantId: "tenant_123",
       agentId: "agent_123",
+      agentKind: "support-agent",
       query: "Find prior failed sync runs caused by missing IDs",
       limit: 5,
       filters: {
@@ -137,8 +172,8 @@ describe("retrievalRequestSchema", () => {
 
   it("applies defaults when ranking inputs are omitted", () => {
     const result = parseRetrievalRequest({
-      tenantId: "tenant_123",
       agentId: "agent_123",
+      agentKind: "support-agent",
       query: "Find similar retrieval failures"
     });
 
@@ -147,6 +182,25 @@ describe("retrievalRequestSchema", () => {
       statuses: [],
       toolNames: []
     });
+  });
+
+  it("does not require tenantId for runtime retrieval payloads", () => {
+    const result = retrievalRequestSchema.safeParse({
+      agentId: "agent_123",
+      agentKind: "support-agent",
+      query: "Find similar retrieval failures"
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it("requires agentKind for runtime retrieval payloads", () => {
+    const result = retrievalRequestSchema.safeParse({
+      agentId: "agent_123",
+      query: "Find similar retrieval failures"
+    });
+
+    expect(result.success).toBe(false);
   });
 });
 
