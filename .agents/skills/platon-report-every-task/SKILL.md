@@ -9,6 +9,8 @@ description: "Use when configuring or prompting a customer-facing agent to insta
 
 Install Platon as a mandatory operating loop, not optional telemetry. Any agent using this skill must report back to Platon after each meaningful work item, including success, failure, and partial completion.
 
+`memory.retrieve_context` is cheap enough to be the default move at task startup. Bias toward calling it early and often so the agent begins with context instead of reconstructing state from scratch.
+
 Read the canonical hosted contract first:
 
 - `https://platon.bigf.me/agent-installation.md`
@@ -29,15 +31,26 @@ Invoke it explicitly as:
 Follow this sequence for every work item:
 
 1. Keep `agentKind` and `agentId` stable across runs.
-2. Before new work, call `memory.retrieve_context` with a plain-language summary of the work.
-3. If the work includes an error, risky step, retry, or known failure-prone area, call `memory.get_similar_failures`.
-4. Do the work.
-5. Before declaring the work finished, call `memory.dump_session`.
+2. At task startup, before planning or execution, call `memory.retrieve_context` with a plain-language summary of the work.
+3. If the task branches into a distinct bounded subtask, call `memory.retrieve_context` again with the new summary. Prefer extra retrieval over skipping it.
+4. If the work includes an error, risky step, retry, or known failure-prone area, call `memory.get_similar_failures`.
+5. Do the work.
+6. Before declaring the work finished, call `memory.dump_session`.
+
+## Retrieval Default
+
+Teach customer agents to treat retrieval as the default startup behavior:
+
+- call `memory.retrieve_context` immediately when a new task arrives
+- call it again when the task goal changes, a new subtask begins, or the agent is about to make a risky decision
+- do not wait for confusion or failure before retrieving context
+- describe the work in plain language so retrieval has enough signal to return useful memory
 
 ## What Counts As A Work Item
 
 Treat each meaningful unit of work as reportable:
 
+- starting a new bounded subtask with a different goal or context window
 - answering a user request after actual investigation or execution
 - finishing a code change, review pass, browser run, or research pass
 - stopping with a blocker, partial result, or failure
@@ -82,18 +95,20 @@ Install Platon memory for this agent.
 2. Keep these identity fields stable across every run:
    - agentKind
    - agentId
-3. Before each new task, call memory.retrieve_context with a plain-language summary of the work.
-4. If you are handling an error, risky step, or repeated issue, call memory.get_similar_failures.
-5. After every task, call memory.dump_session with the task, outcome, tools, key events, errors, and artifacts.
-6. Always record failed and partial runs.
-7. If Platon is temporarily unavailable, continue the task and record that outage in the next session dump.
+3. At the start of every new task, call memory.retrieve_context with a plain-language summary of the work before planning or execution.
+4. memory.retrieve_context is cheap, so call it again whenever the task changes shape, a new bounded subtask starts, or you are entering a risky area.
+5. If you are handling an error, risky step, or repeated issue, call memory.get_similar_failures.
+6. After every task, call memory.dump_session with the task, outcome, tools, key events, errors, and artifacts.
+7. Always record failed and partial runs.
+8. If Platon is temporarily unavailable, continue the task and record that outage in the next session dump.
 ```
 
 ## Completion Check
 
 Before finishing, verify:
 
-- context retrieval happened before work
+- context retrieval happened at task startup before work
+- context retrieval was repeated when the task shifted into a distinct subtask or risky branch
 - similar failures were checked when risk justified it
 - a `memory.dump_session` call was made for the work item
 - the dump happened before the final handoff for that work item

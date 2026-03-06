@@ -87,7 +87,7 @@ If your runtime does not support remote MCP, call the HTTP API directly:
 Platon is an agent memory system accessible via MCP (Model Context Protocol). It provides three tools that give your AI agents persistent memory across sessions.
 
 The core loop:
-1. BEFORE each task — retrieve relevant context and past failures
+1. BEFORE each task — retrieve relevant context at task startup, and retrieve again when the task branches into a new bounded subtask
 2. EXECUTE the task informed by retrieved memory
 3. AFTER each task — dump the session for reflection and storage
 
@@ -107,7 +107,7 @@ Parameters:
 Returns: Numbered results with [confidence] title: summary
 Each result includes a confidence score from 0 to 1.
 
-When to call: Before every task. Always retrieve context first to inform your approach.
+When to call: At task startup before planning or execution. Retrieval is cheap, so call again when the task changes shape or a bounded subtask begins.
 
 Example:
 memory.retrieve_context({
@@ -174,7 +174,8 @@ memory.dump_session({
 ## Workflow Summary
 
 Before every task:
-[ ] Call memory.retrieve_context with a descriptive query
+[ ] Call memory.retrieve_context immediately at task startup with a descriptive query
+[ ] Call memory.retrieve_context again if the goal changes or a bounded subtask starts
 [ ] If error-prone area, call memory.get_similar_failures
 [ ] Apply high-confidence results (>0.7) to inform approach
 
@@ -195,7 +196,9 @@ Note: MCP is the primary interface. Use HTTP endpoints when MCP is not available
 ## Best Practices
 
 - Always dump sessions even for failures — they produce the most valuable learnings
+- Retrieve at task startup by default because retrieve_context is cheap
 - Use descriptive, natural-language queries in retrieve_context
+- Retrieve again when the task branches into a distinct bounded subtask
 - Check get_similar_failures before retrying known error-prone areas
 - High-confidence results (>0.7) should strongly inform your approach
 - Include tools/events/errors in dump_session for richer pattern extraction
@@ -416,7 +419,8 @@ export default function AgentSkillPage() {
             <ol className="list-decimal pl-6 space-y-2">
               <li>
                 <strong className="text-text-primary">BEFORE</strong> each task
-                — retrieve relevant context and past failures
+                — retrieve relevant context at task startup, and retrieve again
+                when the task branches into a new bounded subtask
               </li>
               <li>
                 <strong className="text-text-primary">EXECUTE</strong> the task
@@ -437,8 +441,9 @@ export default function AgentSkillPage() {
         {/* Tool: memory.retrieve_context */}
         <Section title="Tool: memory.retrieve_context">
           <p className="text-text-secondary leading-relaxed mb-4">
-            Retrieve relevant context for a task. Call this before every task to
-            inform your approach with past learnings.
+            Retrieve relevant context for a task. Call this at task startup to
+            inform your approach with past learnings, and call it again when
+            the task changes shape.
           </p>
 
           <h3 className="text-lg font-semibold text-text-primary mt-6 mb-3">
@@ -465,8 +470,8 @@ export default function AgentSkillPage() {
             When to call
           </h3>
           <p className="text-text-secondary text-sm leading-relaxed">
-            Before every task. Always retrieve context first to inform your
-            approach.
+            At task startup before planning or execution. Retrieval is cheap, so
+            call again when the goal changes or a bounded subtask begins.
           </p>
 
           <h3 className="text-lg font-semibold text-text-primary mt-6 mb-3">
@@ -587,7 +592,11 @@ export default function AgentSkillPage() {
               <ul className="space-y-2 text-text-secondary text-sm">
                 <li className="flex items-start gap-2">
                   <span className="text-accent-violet mt-0.5">&#9744;</span>
-                  Call <code className="text-accent-emerald">memory.retrieve_context</code> with a descriptive query
+                  Call <code className="text-accent-emerald">memory.retrieve_context</code> immediately at task startup with a descriptive query
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-accent-violet mt-0.5">&#9744;</span>
+                  Call <code className="text-accent-emerald">memory.retrieve_context</code> again if the goal changes or a bounded subtask starts
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-accent-violet mt-0.5">&#9744;</span>
@@ -664,7 +673,17 @@ export default function AgentSkillPage() {
             </li>
             <li className="flex items-start gap-3">
               <span className="text-accent-violet mt-1 shrink-0">&#8226;</span>
+              Retrieve at task startup by default because retrieve_context is
+              cheap
+            </li>
+            <li className="flex items-start gap-3">
+              <span className="text-accent-violet mt-1 shrink-0">&#8226;</span>
               Use descriptive, natural-language queries in retrieve_context
+            </li>
+            <li className="flex items-start gap-3">
+              <span className="text-accent-violet mt-1 shrink-0">&#8226;</span>
+              Retrieve again when the task branches into a distinct bounded
+              subtask
             </li>
             <li className="flex items-start gap-3">
               <span className="text-accent-violet mt-1 shrink-0">&#8226;</span>

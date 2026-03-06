@@ -39,6 +39,14 @@ describe("agent installation content", () => {
     expect(agentOperatorPrompt).toContain("memory.dump_session");
   });
 
+  it("pushes startup retrieval as the default operating behavior", () => {
+    expect(agentOperatorPrompt).toContain("At the start of every new task");
+    expect(agentOperatorPrompt).toContain("memory.retrieve_context` is cheap");
+    expect(agentOperatorPrompt).toContain("new bounded subtask starts");
+    expect(agentInstallationMarkdown).toContain("Teach the agent to retrieve early rather than waiting until it is stuck.");
+    expect(agentInstallationMarkdown).toContain("Prefer an extra retrieval call over skipping context on startup.");
+  });
+
   it("describes runtime-neutral agent usage", () => {
     expect(agentOperatorPrompt).toContain("coding, research, browser, support, operations, workflow, or assistant agents");
     expect(agentInstallationMarkdown).toContain("coding agents, research agents, browser agents, support agents, workflow agents, autonomous operations agents");

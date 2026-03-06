@@ -24,7 +24,7 @@ Agents should interact with Platon at two key points in their lifecycle:
 
 ### 1. Pre-Run: Context Retrieval
 
-Before starting a task, retrieve relevant tactical lessons or similar past failures to inform your plan.
+Before starting a task, retrieve relevant tactical lessons or similar past failures to inform your plan. Retrieval is cheap, so do it at task startup by default and repeat it when the work shifts into a distinct bounded subtask.
 
 **Tools:**
 

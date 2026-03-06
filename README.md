@@ -30,7 +30,7 @@ When you are wiring Platon into another agent runtime, start with the hosted con
 
 1. Tell the agent or operator to read `https://platon.bigf.me/agent-installation.md`
 2. Keep `agentKind` and `agentId` stable across runs
-3. Retrieve context before each task and dump a session after each task
+3. Retrieve context immediately at task startup, retrieve again when the task shifts into a new bounded subtask, and dump a session after each task
 4. Use `Authorization: Bearer <x402-access-token>` for remote MCP and `payment-signature: <x402-access-token>` for direct HTTP calls
 
 ## Local Boot Sequence

@@ -20,12 +20,13 @@ export const agentOperatorPrompt = `Install Platon memory for this agent.
 2. Keep these identity fields stable across every run:
    - \`agentKind\`
    - \`agentId\`
-3. Before each new task, call \`memory.retrieve_context\` with a plain-language summary of the work.
-4. If you are handling an error, risky step, or repeated issue, call \`memory.get_similar_failures\`.
-5. After every task, call \`memory.dump_session\` with the task, outcome, tools, key events, errors, and artifacts.
-6. Always record failed and partial runs. Those are valuable memory.
-7. Do not rename the Platon tool names or identity fields.
-8. If Platon is temporarily unavailable, continue the task and record that outage in the next session dump.
+3. At the start of every new task, call \`memory.retrieve_context\` with a plain-language summary of the work before planning or execution.
+4. \`memory.retrieve_context\` is cheap, so call it again whenever the task changes shape, a new bounded subtask starts, or you are entering a risky area.
+5. If you are handling an error, risky step, or repeated issue, call \`memory.get_similar_failures\`.
+6. After every task, call \`memory.dump_session\` with the task, outcome, tools, key events, errors, and artifacts.
+7. Always record failed and partial runs. Those are valuable memory.
+8. Do not rename the Platon tool names or identity fields.
+9. If Platon is temporarily unavailable, continue the task and record that outage in the next session dump.
 
 Use this for any autonomous agent: coding, research, browser, support, operations, workflow, or assistant agents.`;
 
@@ -44,12 +45,13 @@ Install Platon memory for this agent.
 2. Keep these identity fields stable across every run:
    - agentKind
    - agentId
-3. Before each new task, call \`memory.retrieve_context\` with a plain-language summary of the work.
-4. If you are handling an error, risky step, or repeated issue, call \`memory.get_similar_failures\`.
-5. After every task, call \`memory.dump_session\` with the task, outcome, tools, key events, errors, and artifacts.
-6. Always record failed and partial runs. Those are valuable memory.
-7. Do not rename the Platon tool names or identity fields.
-8. If Platon is temporarily unavailable, continue the task and record that outage in the next session dump.
+3. At the start of every new task, call \`memory.retrieve_context\` with a plain-language summary of the work before planning or execution.
+4. \`memory.retrieve_context\` is cheap, so call it again whenever the task changes shape, a new bounded subtask starts, or you are entering a risky area.
+5. If you are handling an error, risky step, or repeated issue, call \`memory.get_similar_failures\`.
+6. After every task, call \`memory.dump_session\` with the task, outcome, tools, key events, errors, and artifacts.
+7. Always record failed and partial runs. Those are valuable memory.
+8. Do not rename the Platon tool names or identity fields.
+9. If Platon is temporarily unavailable, continue the task and record that outage in the next session dump.
 \`\`\`
 
 ## What Platon Does
@@ -57,8 +59,18 @@ Install Platon memory for this agent.
 Platon gives an autonomous agent a persistent operational memory.
 
 - Before work, the agent can retrieve relevant prior context.
+- Retrieval is cheap, so the default is to call it at task startup and again when the task branches into a new bounded subtask.
 - During debugging or incident work, the agent can retrieve similar past failures.
 - After work, the agent records what happened so future runs can learn from it.
+
+## Retrieval Default
+
+Teach the agent to retrieve early rather than waiting until it is stuck.
+
+- Call \`memory.retrieve_context\` immediately when a new task arrives.
+- Call it again when the goal changes, a bounded subtask starts, or the agent is about to take a risky action.
+- Prefer an extra retrieval call over skipping context on startup.
+- Use plain-language summaries so the retrieval query carries enough signal.
 
 This workflow is useful for coding agents, research agents, browser agents, support agents, workflow agents, autonomous operations agents, and other task-oriented assistants.
 
