@@ -52,6 +52,10 @@ describe("governance memory contracts", () => {
     });
 
     expect(result.success).toBe(true);
+    if (!result.success) {
+      throw new Error("publishedMemorySchema.safeParse should succeed");
+    }
+
     expect(result.data).toMatchObject({
       qualityScore: 0.22,
       status: "suppressed",
@@ -87,6 +91,10 @@ describe("governance memory contracts", () => {
     });
 
     expect(result.success).toBe(true);
+    if (!result.success) {
+      throw new Error("retrievalResponseSchema.safeParse should succeed");
+    }
+
     expect(result.data.results[0]).toMatchObject({
       reasons: [
         {
