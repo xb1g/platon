@@ -23,6 +23,19 @@ Before starting a task, retrieve relevant tactical lessons or similar past failu
 
 > "My task is to deploy to AWS. I should check Platon to see if there are any known deployment failures or optimized IAM policies used in previous sessions."
 
+## Production Environment
+
+The Agent Memory Platform is deployed at:
+
+- **Web Dashboard**: [https://platon.bigf.me](https://platon.bigf.me)
+- **API Base URL**: [https://platon.bigf.me/api](https://platon.bigf.me/api)
+
+### Accessing the API
+
+When integrating your agents, use the Production API URL. Authentication remains the same as in development (currently defaulting to development mode if `NVM_API_KEY` is not provided).
+
+## Development Setup
+
 ### 2. Post-Run: Session Ingestion
 
 After completing a task (or failing), dump your execution logs for async reflection.
