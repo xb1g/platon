@@ -93,7 +93,7 @@ The executor must respect this order:
 
 - [x] Task 1: Add live end-to-end smoke infrastructure
 - [x] Task 2: Replace heuristic reflection with model-backed structured reflection
-- [ ] Task 3: Enrich the shared contracts for memory provenance and governance
+- [x] Task 3: Enrich the shared contracts for memory provenance and governance
 - [ ] Task 4: Persist richer graph entities and provenance
 - [ ] Task 5: Installation, Delivery, and Execution Masterplan
 - [ ] Task 6: Implement vector indexing, hybrid retrieval, and memory governance
@@ -239,7 +239,7 @@ Execution note (2026-03-06T17:16:00Z):
 - Verification: `pnpm --filter @memory/worker test -- llm-reflection.test.ts reflect-session.test.ts` (pass), `pnpm --filter @memory/worker typecheck` (pass)
 - Merge: merged into `main` as `4e0b24d`
 
-### [ ] Task 3: Enrich the shared contracts for memory provenance and governance
+### [x] Task 3: Enrich the shared contracts for memory provenance and governance
 
 **Files:**
 - Modify: `packages/shared/src/reflection.ts`
@@ -282,6 +282,13 @@ Expected: PASS with existing tests still green.
 git add packages/shared/src/reflection.ts packages/shared/src/retrieval.ts packages/shared/src/session.ts packages/shared/tests/governance-contracts.test.ts
 git commit -m "feat: extend memory contracts for provenance and governance"
 ```
+
+Execution note (2026-03-06T17:17:12Z):
+- Branch: `main`
+- Worktree: `/Users/bunyasit/dev/platon`
+- Commit: `pending`
+- Verification: `pnpm --filter @memory/shared test -- governance-contracts.test.ts` (pass), `pnpm --filter @memory/shared test` (pass)
+- Merge: not applicable; implemented directly in the primary worktree
 
 ### [ ] Task 4: Persist richer graph entities and provenance
 

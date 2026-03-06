@@ -32,6 +32,12 @@ export const humanFeedbackSchema = z.object({
   summary: z.string().min(1)
 });
 
+export const sourceProvenanceSchema = z.object({
+  sessionId: z.string().min(1),
+  reflectionId: z.string().min(1).optional(),
+  observedAt: z.string().datetime({ offset: true }).optional()
+});
+
 export const outcomeSchema = z.object({
   status: z.enum(["success", "failed", "partial"]),
   summary: z.string().min(1)
@@ -58,6 +64,7 @@ export type Outcome = z.infer<typeof outcomeSchema>;
 export type SessionError = z.infer<typeof sessionErrorSchema>;
 export type SessionEvent = z.infer<typeof eventSchema>;
 export type SessionPayload = z.infer<typeof sessionPayloadSchema>;
+export type SourceProvenance = z.infer<typeof sourceProvenanceSchema>;
 export type Task = z.infer<typeof taskSchema>;
 export type Tool = z.infer<typeof toolSchema>;
 

@@ -1,5 +1,8 @@
 import { z } from "zod";
 
+import { memoryStatusSchema } from "./reflection.js";
+import { sourceProvenanceSchema } from "./session.js";
+
 export const retrievalFiltersSchema = z.object({
   statuses: z.array(z.enum(["success", "failed", "partial"])).default([]),
   toolNames: z.array(z.string().min(1)).default([])
@@ -17,12 +20,30 @@ export const retrievalRequestSchema = z.object({
   })
 });
 
+export const retrievalReasonSchema = z.object({
+  kind: z.enum([
+    "semantic_similarity",
+    "graph_neighbor",
+    "confidence",
+    "freshness",
+    "provenance_quality",
+    "usefulness",
+    "conflict_penalty"
+  ]),
+  summary: z.string().min(1),
+  score: z.number().min(0).max(1).optional()
+});
+
 export const retrievalResultSchema = z.object({
   id: z.string().min(1),
   type: z.enum(["learning", "session", "failure", "success_pattern"]),
   title: z.string().min(1),
   summary: z.string().min(1),
-  confidence: z.number().min(0).max(1)
+  confidence: z.number().min(0).max(1),
+  status: memoryStatusSchema.optional(),
+  qualityScore: z.number().min(0).max(1).optional(),
+  reasons: z.array(retrievalReasonSchema).default([]),
+  sourceProvenance: z.array(sourceProvenanceSchema).default([])
 });
 
 export const retrievalResponseSchema = z.object({
@@ -30,6 +51,7 @@ export const retrievalResponseSchema = z.object({
 });
 
 export type RetrievalFilters = z.infer<typeof retrievalFiltersSchema>;
+export type RetrievalReason = z.infer<typeof retrievalReasonSchema>;
 export type RetrievalRequest = z.infer<typeof retrievalRequestSchema>;
 export type RetrievalResponse = z.infer<typeof retrievalResponseSchema>;
 export type RetrievalResult = z.infer<typeof retrievalResultSchema>;
