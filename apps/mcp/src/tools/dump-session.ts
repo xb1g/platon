@@ -38,13 +38,6 @@ export const dumpSession = async (
     };
   }
 
-  if (!context.internalAuthToken) {
-    return {
-      content: [{ type: "text" as const, text: "Server misconfiguration: missing PLATON_INTERNAL_AUTH_TOKEN" }],
-      isError: true,
-    };
-  }
-
   try {
     const headers: Record<string, string> = {
       "Content-Type": "application/json",

@@ -11,13 +11,6 @@ export const getSimilarFailures = async (
     };
   }
 
-  if (!context.internalAuthToken) {
-    return {
-      content: [{ type: "text", text: "Server misconfiguration: missing PLATON_INTERNAL_AUTH_TOKEN" }],
-      isError: true,
-    };
-  }
-
   const payload = {
     agentId: context.agentId,
     agentKind: context.agentKind,
