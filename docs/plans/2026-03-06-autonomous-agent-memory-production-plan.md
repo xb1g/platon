@@ -95,7 +95,7 @@ The executor must respect this order:
 - [x] Task 2: Replace heuristic reflection with model-backed structured reflection
 - [x] Task 3: Enrich the shared contracts for memory provenance and governance
 - [x] Task 4: Persist richer graph entities and provenance
-- [ ] Task 5: Installation, Delivery, and Execution Masterplan
+- [x] Task 5: Installation, Delivery, and Execution Masterplan
 - [ ] Task 6: Implement vector indexing, hybrid retrieval, and memory governance
 - [ ] Task 7: Build retrieval explanations and usefulness feedback loops
 - [ ] Task 8: Create benchmark tasks and an eval harness
@@ -339,7 +339,7 @@ Execution note (2026-03-06T17:22:59Z):
 - Verification: `pnpm --filter @memory/worker test -- reflect-session.test.ts store-reflection-governance.test.ts` (pass), `pnpm --filter @memory/worker typecheck` (pass)
 - Merge: merged into `main` as `0523577`
 
-### [ ] Task 5: Installation, Delivery, and Execution Masterplan
+### [x] Task 5: Installation, Delivery, and Execution Masterplan
 
 This is the masterplan task for the whole program. It exists so the product can be installed by humans and agents, and so the cron executor can safely work through the remaining tasks.
 
@@ -438,7 +438,14 @@ git add apps/web/lib/agent-installation.ts apps/web/app/agent-installation.md/ro
 git commit -m "feat: add installation contract and executor masterplan"
 ```
 
-### [ ] Task 6: Implement vector indexing, hybrid retrieval, and memory governance
+Execution note (2026-03-06T17:35:00Z):
+- Branch: `main`
+- Worktree: `/Users/bunyasit/dev/platon`
+- Commit: `pending`
+- Verification: `pnpm --filter @memory/web test -- agent-installation.test.ts` (pass), `pnpm --filter @memory/web typecheck` (pass)
+- Merge: Task 5 changes reconciled directly in `main`; isolated worktree was skipped because overlapping Task 5 edits were already present in the primary workspace
+
+### [x] Task 6: Implement vector indexing, hybrid retrieval, and memory governance
 
 **Files:**
 - Modify: `apps/api/src/lib/retrieval/vector-search.ts`
@@ -492,6 +499,20 @@ Expected: PASS with hybrid ranking and publish/suppress/quarantine behavior cove
 git add apps/api/src/lib/retrieval/vector-search.ts apps/api/src/lib/retrieval/embed.ts apps/api/src/lib/retrieval/vector-store.ts apps/api/tests/vector-search.test.ts apps/api/tests/retrieval-ranking.test.ts apps/worker/src/lib/memory-quality.ts apps/worker/src/jobs/govern-memory.ts apps/worker/tests/memory-quality.test.ts apps/worker/tests/govern-memory.test.ts apps/worker/src/index.ts .env.example
 git commit -m "feat: add hybrid retrieval and memory governance"
 ```
+
+Execution note (2026-03-06T17:37:27Z):
+- Branch: `codex/task-06-hybrid-retrieval-governance`
+- Worktree: `/Users/bunyasit/dev/platon/.worktrees/codex-task-06-hybrid-retrieval-governance`
+- Commit: `pending`
+- Verification: `pnpm --filter @memory/api test -- vector-search.test.ts retrieval-ranking.test.ts retrieve.test.ts` (pass), `pnpm --filter @memory/worker test -- memory-quality.test.ts govern-memory.test.ts reflect-session.test.ts` (pass), `pnpm --filter @memory/api typecheck` (pass), `pnpm --filter @memory/worker typecheck` (pass)
+- Merge: pending into `main`
+
+Execution note (2026-03-06T18:04:00Z):
+- Branch: `codex/task-06-hybrid-retrieval-governance`
+- Worktree: `/Users/bunyasit/dev/platon/.worktrees/codex-task-06-hybrid-retrieval-governance`
+- Commit: `4107fdd`
+- Verification: `pnpm --filter @memory/api test -- vector-search.test.ts retrieval-ranking.test.ts retrieve.test.ts` (pass), `pnpm --filter @memory/worker test -- memory-quality.test.ts govern-memory.test.ts reflect-session.test.ts` (pass), `pnpm --filter @memory/api typecheck` (pass), `pnpm --filter @memory/worker typecheck` (pass)
+- Merge: Task 6 changes reconciled into `main` by checking out only task-owned files from `codex/task-06-hybrid-retrieval-governance`; unrelated local edits were left untouched
 
 ### [ ] Task 7: Build retrieval explanations and usefulness feedback loops
 
