@@ -29,21 +29,26 @@ export const graphSearch = async (
     return [];
   }
 
-  const statusFilter = params.filters?.statuses?.length
-    ? 'AND s.status IN $statuses'
-    : '';
-
-  const toolFilter = params.filters?.toolNames?.length
-    ? 'AND EXISTS { (s)-[:USED_TOOL]->(t:Tool) WHERE t.name IN $toolNames }'
-    : '';
+  const sessionFilterParts: string[] = [];
+  if (params.filters?.statuses?.length) {
+    sessionFilterParts.push('s.status IN $statuses');
+  }
+  if (params.filters?.toolNames?.length) {
+    sessionFilterParts.push(
+      'EXISTS { (s)-[:USED_TOOL]->(t:Tool) WHERE t.name IN $toolNames }'
+    );
+  }
+  const sessionWhereClause =
+    sessionFilterParts.length > 0
+      ? `WHERE ${sessionFilterParts.join(' AND ')}`
+      : '';
 
   const result = await deps.session.run(
     `MATCH (ns:MemoryNamespace { namespaceId: $namespaceId })-[:HAS_SESSION]->(s:Session)
+     ${sessionWhereClause}
      OPTIONAL MATCH (s)-[:PRODUCED]->(l:Learning)
      WHERE (l.title CONTAINS $query OR s.taskSummary CONTAINS $query)
        AND (l IS NULL OR coalesce(l.status, 'published') = 'published')
-     ${statusFilter}
-     ${toolFilter}
      WITH l, s,
        CASE WHEN l IS NOT NULL
          THEN {

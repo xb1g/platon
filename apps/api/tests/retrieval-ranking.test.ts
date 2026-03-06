@@ -93,6 +93,54 @@ describe('Retrieval Ranking', () => {
     expect(results[0]).toHaveProperty('signal', 'failure_pattern');
   });
 
+  it('status filter in graph search is applied at the outer session level, not inside OPTIONAL MATCH', async () => {
+    const session = {
+      run: vi.fn().mockResolvedValue({ records: [] }),
+    } as any;
+
+    await graphSearch(
+      {
+        namespaceId: 'ns-123',
+        query: 'postgres migration',
+        limit: 5,
+        filters: { statuses: ['failed'], toolNames: [] },
+      },
+      { session }
+    );
+
+    const [query] = session.run.mock.calls[0];
+    const outerMatchIndex = query.indexOf('MATCH (ns:MemoryNamespace');
+    const optionalMatchIndex = query.indexOf('OPTIONAL MATCH');
+    const statusFilterIndex = query.indexOf('s.status IN $statuses');
+
+    // The status filter must appear in the outer MATCH WHERE, before OPTIONAL MATCH
+    expect(statusFilterIndex).toBeGreaterThan(outerMatchIndex);
+    expect(statusFilterIndex).toBeLessThan(optionalMatchIndex);
+  });
+
+  it('tool filter in graph search is applied at the outer session level, not inside OPTIONAL MATCH', async () => {
+    const session = {
+      run: vi.fn().mockResolvedValue({ records: [] }),
+    } as any;
+
+    await graphSearch(
+      {
+        namespaceId: 'ns-123',
+        query: 'postgres migration',
+        limit: 5,
+        filters: { statuses: [], toolNames: ['psql'] },
+      },
+      { session }
+    );
+
+    const [query] = session.run.mock.calls[0];
+    const optionalMatchIndex = query.indexOf('OPTIONAL MATCH');
+    const toolFilterIndex = query.indexOf('t.name IN $toolNames');
+
+    // The tool filter must appear before OPTIONAL MATCH
+    expect(toolFilterIndex).toBeLessThan(optionalMatchIndex);
+  });
+
   it('exact namespace graph match beats higher-confidence cross-namespace vector match', () => {
     const graphResults: RankTestResult[] = [
       makeResult({ id: 'graph-1', type: 'learning', confidence: 0.78, namespaceMatch: 'exact' }),
