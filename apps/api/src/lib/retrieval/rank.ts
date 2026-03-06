@@ -19,7 +19,7 @@ const WEIGHTS = {
   confidence: 0.35,
   freshness: 0.2,
   exactness: 0.2,
-  sourceBoost: 0.1,
+  sourceBoost: 0.30,
   signal: 0.05,
   quality: 0.1,
   usefulness: 0.15,
@@ -28,11 +28,11 @@ const WEIGHTS = {
 
 const SOURCE_BOOST: Record<string, number> = {
   graph: 1.0,
-  vector: 0.7,
+  vector: 0.35,
 };
 
 const TYPE_BOOST: Record<string, number> = {
-  failure: 1.2,
+  failure: 1.1,
   learning: 1.1,
   success_pattern: 1.0,
   session: 0.8,

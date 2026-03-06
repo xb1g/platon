@@ -321,4 +321,70 @@ describe('Retrieval Ranking', () => {
       ])
     );
   });
+
+  it('graph-source success hit outranks vector-only failure when graph hit is exact-match relevant', () => {
+    // Scenario from production issue: "redis failover" query
+    // Redis success memory appears in graph results (CONTAINS match)
+    // Postgres failure appears ONLY in vector results (no text match for redis query)
+    const graphResults: RankTestResult[] = [
+      makeResult({
+        id: 'redis-success',
+        type: 'success_pattern',
+        title: 'Redis failover recovery',
+        confidence: 0.7,
+        namespaceMatch: 'exact',
+        signal: 'semantic',
+      }),
+    ];
+
+    const vectorResults: RankTestResult[] = [
+      makeResult({
+        id: 'postgres-failure',
+        type: 'failure',
+        title: 'Postgres billing-ledger migration lock timeout',
+        confidence: 0.8,
+        qualityScore: 0.85,
+        namespaceMatch: 'exact',
+        signal: 'failure_pattern',
+        semanticSimilarity: 0.48,
+      }),
+    ];
+
+    const ranked = rankResults(graphResults, vectorResults);
+
+    // Redis success (graph hit = exact text match) should beat Postgres failure (vector-only, low similarity)
+    expect(ranked[0].id).toBe('redis-success');
+  });
+
+  it('high-similarity vector success outranks low-similarity vector failure in unfiltered retrieval', () => {
+    // When both are vector-only results, high semantic similarity should dominate over failure type boost
+    const graphResults: RankTestResult[] = [];
+
+    const vectorResults: RankTestResult[] = [
+      makeResult({
+        id: 'redis-success',
+        type: 'success_pattern',
+        title: 'Redis failover recovery',
+        confidence: 0.7,
+        namespaceMatch: 'exact',
+        signal: 'semantic',
+        semanticSimilarity: 0.85,
+      }),
+      makeResult({
+        id: 'postgres-failure',
+        type: 'failure',
+        title: 'Postgres billing-ledger migration lock timeout',
+        confidence: 0.8,
+        qualityScore: 0.85,
+        namespaceMatch: 'exact',
+        signal: 'failure_pattern',
+        semanticSimilarity: 0.42,
+      }),
+    ];
+
+    const ranked = rankResults(graphResults, vectorResults);
+
+    // High semantic similarity (0.85) should beat low-sim failure (0.42) despite failure type boost
+    expect(ranked[0].id).toBe('redis-success');
+  });
 });
