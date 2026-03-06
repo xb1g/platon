@@ -378,13 +378,6 @@ export default function LandingPage() {
 
           {/* Right CTA */}
           <div className="flex items-center gap-3">
-            <a
-              href="#cta"
-              className="hidden sm:inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-white/20 text-sm text-white/80 hover:text-white hover:border-white/40 transition-all"
-            >
-              Contact Sales
-              <ChevronRight className="w-3.5 h-3.5" />
-            </a>
             <Link
               href="/dashboard"
               className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-white/20 text-sm text-white/80 hover:text-white hover:border-white/40 transition-all"
@@ -533,10 +526,6 @@ export default function LandingPage() {
                 href="/dashboard"
                 className="group inline-flex flex-col"
               >
-                <span className="flex items-center gap-2 text-sm font-medium text-white tracking-wide">
-                  Open dashboard
-                  <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                </span>
                 <span className="h-px w-full bg-white/30 mt-2 group-hover:bg-accent-violet transition-colors" />
               </Link>
             </motion.div>
