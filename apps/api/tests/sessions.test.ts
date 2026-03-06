@@ -1,4 +1,21 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+const { poolQueryMock, queueAddMock } = vi.hoisted(() => ({
+  poolQueryMock: vi.fn(),
+  queueAddMock: vi.fn()
+}));
+
+vi.mock("../src/lib/postgres.js", () => ({
+  pool: {
+    query: poolQueryMock
+  }
+}));
+
+vi.mock("bullmq", () => ({
+  Queue: vi.fn(() => ({
+    add: queueAddMock
+  }))
+}));
+
 import { buildServer } from "../src/server.js";
 
 const paywallConfig = {
@@ -40,6 +57,29 @@ const buildPaidServer = async () => {
 };
 
 describe("Sessions API", () => {
+  beforeEach(() => {
+    poolQueryMock.mockReset();
+    queueAddMock.mockReset();
+
+    poolQueryMock.mockImplementation(async (queryText: string) => {
+      if (queryText.includes("INSERT INTO raw_sessions")) {
+        return {
+          rows: [
+            {
+              id: "stored-session-123"
+            }
+          ]
+        };
+      }
+
+      return { rows: [] };
+    });
+
+    queueAddMock.mockResolvedValue({
+      id: "job-123"
+    });
+  });
+
   it("requires verified auth context for protected requests", async () => {
     const app = await buildServer();
 
@@ -96,8 +136,53 @@ describe("Sessions API", () => {
 
     expect(response.statusCode).toBe(201);
     expect(response.json()).toEqual({
-      id: "mock-id",
+      id: "stored-session-123",
       status: "queued",
+      subscriberId: "subscriber-runtime",
+      agentId: "agent-runtime",
+      agentKind: "support-agent"
+    });
+
+    await app.close();
+  });
+
+  it("enqueues a reflection job for the stored session row", async () => {
+    const { app } = await buildPaidServer();
+
+    const payload = {
+      tenantId: "tenant-from-body",
+      agentId: "agent-runtime",
+      agentKind: "support-agent",
+      sessionId: "session-123",
+      task: {
+        kind: "support-ticket",
+        summary: "Investigate failed order sync"
+      },
+      outcome: {
+        status: "failed" as const,
+        summary: "Order sync failed due to a missing external identifier"
+      }
+    };
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/sessions",
+      headers: {
+        "payment-signature": "token-123"
+      },
+      payload
+    });
+
+    expect(response.statusCode).toBe(201);
+    expect(response.json()).toEqual({
+      id: "stored-session-123",
+      status: "queued",
+      subscriberId: "subscriber-runtime",
+      agentId: "agent-runtime",
+      agentKind: "support-agent"
+    });
+    expect(queueAddMock).toHaveBeenCalledWith("reflect-session", {
+      rawSessionId: "stored-session-123",
       subscriberId: "subscriber-runtime",
       agentId: "agent-runtime",
       agentKind: "support-agent"
