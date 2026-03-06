@@ -185,4 +185,85 @@ describe('Reflect Session Job', () => {
     expect(sessionMergeParams.wentWrong).toHaveLength(0);
     expect(session.run.mock.calls[1][0]).toContain("s.status = CASE WHEN size($wentWrong) > 0 THEN 'failed' ELSE 'success' END");
   });
+
+  describe('reflection status in Postgres', () => {
+    it('sets reflection_status to processing when job starts', async () => {
+      const markProcessing = vi.fn().mockResolvedValue(undefined);
+      const markCompleted = vi.fn().mockResolvedValue(undefined);
+      llmReflect.mockResolvedValue(reflection);
+      const session = { run: vi.fn().mockResolvedValue({ records: [] }) } as any;
+      const rawSessionId = 42;
+
+      await reflectSession(
+        {
+          ...baseNamespace,
+          rawSessionId,
+          sessionId: reflection.sessionId,
+          task: { kind: 'incident', summary: 'Investigate Redis timeout' },
+          outcome: { status: 'failed', summary: 'Redis reads failed' },
+        },
+        {
+          session,
+          sessionStore: { markReflectionProcessing: markProcessing, markReflectionCompleted: markCompleted, markReflectionFailed: vi.fn() },
+        }
+      );
+
+      expect(markProcessing).toHaveBeenCalledOnce();
+      expect(markProcessing).toHaveBeenCalledWith(rawSessionId);
+      expect(markCompleted).toHaveBeenCalledWith(rawSessionId);
+    });
+
+    it('sets reflection_status to completed and reflection_completed_at after success', async () => {
+      const markProcessing = vi.fn().mockResolvedValue(undefined);
+      const markCompleted = vi.fn().mockResolvedValue(undefined);
+      llmReflect.mockResolvedValue(reflection);
+      const session = { run: vi.fn().mockResolvedValue({ records: [] }) } as any;
+      const rawSessionId = 99;
+
+      await reflectSession(
+        {
+          ...baseNamespace,
+          rawSessionId,
+          sessionId: reflection.sessionId,
+          task: { kind: 'incident', summary: 'Investigate Redis timeout' },
+          outcome: { status: 'failed', summary: 'Redis reads failed' },
+        },
+        {
+          session,
+          sessionStore: { markReflectionProcessing: markProcessing, markReflectionCompleted: markCompleted, markReflectionFailed: vi.fn() },
+        }
+      );
+
+      expect(markCompleted).toHaveBeenCalledOnce();
+      expect(markCompleted).toHaveBeenCalledWith(rawSessionId);
+    });
+
+    it('sets reflection_status to failed and reflection_error after reflection throws', async () => {
+      const markProcessing = vi.fn().mockResolvedValue(undefined);
+      const markFailed = vi.fn().mockResolvedValue(undefined);
+      llmReflect.mockRejectedValue(new Error('LLM rate limit exceeded'));
+      const rawSessionId = 7;
+
+      const session = { run: vi.fn().mockResolvedValue({ records: [] }) } as any;
+      await expect(
+        reflectSession(
+          {
+            ...baseNamespace,
+            rawSessionId,
+            sessionId: 'session-err',
+            task: { kind: 'incident', summary: 'Investigate' },
+            outcome: { status: 'failed', summary: 'Failed' },
+          },
+          {
+            session,
+            sessionStore: { markReflectionProcessing: markProcessing, markReflectionCompleted: vi.fn(), markReflectionFailed: markFailed },
+          }
+        )
+      ).rejects.toThrow('LLM rate limit exceeded');
+
+      expect(markProcessing).toHaveBeenCalledWith(rawSessionId);
+      expect(markFailed).toHaveBeenCalledOnce();
+      expect(markFailed).toHaveBeenCalledWith(rawSessionId, 'LLM rate limit exceeded');
+    });
+  });
 });
