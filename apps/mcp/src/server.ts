@@ -65,14 +65,17 @@ const getRequiredFields = (...fields: string[]) =>
 export const listMemoryTools = (): ToolSchema[] => [
   {
     name: "memory.dump_session",
-    description: "Dump a session for reflection and storage",
+    description: "Dump a session for reflection and storage. Uses canonical session payload (task, outcome, optional tools/events/artifacts/errors). Legacy content-only usage is not supported.",
     inputSchema: {
       type: "object",
       properties: {
         ...namespaceProperties,
-        sessionId: { type: "string" as const },
+        sessionId: { type: "string" as const, description: "Unique session identifier" },
+        inputContextSummary: { type: "string" as const, description: "Optional summary of input context" },
+        tenantId: { type: "string" as const, description: "Optional tenant for namespace resolution" },
         task: {
           type: "object" as const,
+          description: "Required task descriptor",
           properties: {
             kind: { type: "string" as const },
             summary: { type: "string" as const },
@@ -81,11 +84,65 @@ export const listMemoryTools = (): ToolSchema[] => [
         },
         outcome: {
           type: "object" as const,
+          description: "Required outcome descriptor",
           properties: {
             status: { type: "string" as const, enum: ["success", "failed", "partial"] },
             summary: { type: "string" as const },
           },
           required: ["status", "summary"],
+        },
+        tools: {
+          type: "array" as const,
+          description: "Optional list of tools used",
+          items: {
+            type: "object" as const,
+            properties: { name: { type: "string" as const }, category: { type: "string" as const } },
+            required: ["name", "category"],
+          },
+        },
+        events: {
+          type: "array" as const,
+          description: "Optional session events",
+          items: {
+            type: "object" as const,
+            properties: { type: { type: "string" as const }, summary: { type: "string" as const } },
+            required: ["type", "summary"],
+          },
+        },
+        artifacts: {
+          type: "array" as const,
+          description: "Optional artifacts (kind, uri, summary)",
+          items: {
+            type: "object" as const,
+            properties: {
+              kind: { type: "string" as const },
+              uri: { type: "string" as const },
+              summary: { type: "string" as const },
+            },
+            required: ["kind", "uri"],
+          },
+        },
+        errors: {
+          type: "array" as const,
+          description: "Optional errors (message, optional code, retryable)",
+          items: {
+            type: "object" as const,
+            properties: {
+              message: { type: "string" as const },
+              code: { type: "string" as const },
+              retryable: { type: "boolean" as const },
+            },
+            required: ["message"],
+          },
+        },
+        humanFeedback: {
+          type: "object" as const,
+          description: "Optional human feedback (rating 1-5, summary)",
+          properties: {
+            rating: { type: "number" as const },
+            summary: { type: "string" as const },
+          },
+          required: ["rating", "summary"],
         },
       },
       required: getRequiredFields("agentKind", "agentId", "sessionId", "task", "outcome"),

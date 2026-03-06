@@ -1,3 +1,4 @@
+import { parseSessionPayload } from "@memory/shared";
 import type { ToolContext } from "../server.js";
 
 export const dumpSession = async (
@@ -8,13 +9,27 @@ export const dumpSession = async (
     agentId: context.agentId,
     agentKind: context.agentKind,
     sessionId: args.sessionId,
+    inputContextSummary: args.inputContextSummary,
+    tenantId: args.tenantId,
     task: args.task,
     outcome: args.outcome,
     tools: args.tools ?? [],
     events: args.events ?? [],
     artifacts: args.artifacts ?? [],
     errors: args.errors ?? [],
+    humanFeedback: args.humanFeedback,
   };
+
+  let parsed;
+  try {
+    parsed = parseSessionPayload(payload);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return {
+      content: [{ type: "text" as const, text: `Invalid payload: ${message}` }],
+      isError: true,
+    };
+  }
 
   try {
     const headers: Record<string, string> = {
@@ -29,7 +44,7 @@ export const dumpSession = async (
     const response = await fetch(`${context.apiBaseUrl}/sessions`, {
       method: "POST",
       headers,
-      body: JSON.stringify(payload),
+      body: JSON.stringify(parsed),
     });
 
     if (!response.ok) {
@@ -42,7 +57,7 @@ export const dumpSession = async (
 
     const result = await response.json();
     return {
-      content: [{ type: "text" as const, text: `Session ${args.sessionId} ingested successfully. ID: ${(result as any).id}` }],
+      content: [{ type: "text" as const, text: `Session ${parsed.sessionId} ingested successfully. ID: ${(result as { id?: string }).id ?? "unknown"}` }],
     };
   } catch (error) {
     return {
