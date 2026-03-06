@@ -31,6 +31,8 @@ export const llmReflect = async (data: ReflectableSession): Promise<ReflectionDa
 
   return {
     sessionId: data.sessionId,
+    taskSummary: data.task.summary,
+    outcomeSummary: data.outcome.summary,
     wentWell,
     wentWrong,
     likelyCauses: wentWrong.length > 0 ? ['The previous run encountered an unresolved execution issue.'] : [],

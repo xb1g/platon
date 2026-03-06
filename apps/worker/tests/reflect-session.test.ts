@@ -114,7 +114,7 @@ describe('Reflect Session Job', () => {
 
     await reflectSession(
       {
-        rawSessionId: 1,
+        rawSessionId: 'uuid-session-1',
         ...baseNamespace,
       },
       {
@@ -128,7 +128,7 @@ describe('Reflect Session Job', () => {
     );
 
     expect(loadRawSession).toHaveBeenCalledWith({
-      rawSessionId: 1,
+      rawSessionId: 'uuid-session-1',
       subscriberId: baseNamespace.subscriberId,
       agentKind: baseNamespace.agentKind,
       agentId: baseNamespace.agentId,
@@ -241,7 +241,7 @@ describe('Reflect Session Job', () => {
       const markCompleted = vi.fn().mockResolvedValue(undefined);
       llmReflect.mockResolvedValue(reflection);
       const session = { run: vi.fn().mockResolvedValue({ records: [] }) } as any;
-      const rawSessionId = 42;
+      const rawSessionId = 'uuid-session-42';
 
       await reflectSession(
         {
@@ -267,7 +267,7 @@ describe('Reflect Session Job', () => {
       const markCompleted = vi.fn().mockResolvedValue(undefined);
       llmReflect.mockResolvedValue(reflection);
       const session = { run: vi.fn().mockResolvedValue({ records: [] }) } as any;
-      const rawSessionId = 99;
+      const rawSessionId = 'uuid-session-99';
 
       await reflectSession(
         {
@@ -291,7 +291,7 @@ describe('Reflect Session Job', () => {
       const markProcessing = vi.fn().mockResolvedValue(undefined);
       const markFailed = vi.fn().mockResolvedValue(undefined);
       llmReflect.mockRejectedValue(new Error('LLM rate limit exceeded'));
-      const rawSessionId = 7;
+      const rawSessionId = 'uuid-session-7';
 
       const session = { run: vi.fn().mockResolvedValue({ records: [] }) } as any;
       await expect(

@@ -11,19 +11,19 @@ import type { ReflectionData, StoreReflectionDeps } from '../lib/store-reflectio
 
 export type DirectReflectSessionInput = StoredSessionPayload & {
   subscriberId: string;
-  rawSessionId?: number;
+  rawSessionId?: string;
 };
 
 export type StoredReflectSessionInput = RawSessionLookup & {
-  rawSessionId: number;
+  rawSessionId: string;
 };
 
 export type ReflectSessionInput = DirectReflectSessionInput | StoredReflectSessionInput;
 
 export type SessionStoreStatus = {
-  markReflectionProcessing: (rawSessionId: number) => Promise<void>;
-  markReflectionCompleted: (rawSessionId: number) => Promise<void>;
-  markReflectionFailed: (rawSessionId: number, error: string) => Promise<void>;
+  markReflectionProcessing: (rawSessionId: string) => Promise<void>;
+  markReflectionCompleted: (rawSessionId: string) => Promise<void>;
+  markReflectionFailed: (rawSessionId: string, error: string) => Promise<void>;
 };
 
 export type ReflectSessionDeps = StoreReflectionDeps & {
