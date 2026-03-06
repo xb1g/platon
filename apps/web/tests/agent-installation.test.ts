@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import { GET } from "../app/agent-installation.md/route";
 import {
   AGENT_INSTALLATION_URL,
+  EMBEDDED_AGENT_ID,
+  EMBEDDED_PLAN_ID,
   agentInstallationMarkdown,
   agentOperatorPrompt,
 } from "../lib/agent-installation";
@@ -48,6 +50,11 @@ describe("agent installation content", () => {
   it("includes a migration note for the deprecated rc14 token helper", () => {
     expect(agentInstallationMarkdown).toContain("@nevermined-io/payments@1.0.0-rc14");
     expect(agentInstallationMarkdown).toContain("payments.agents.getAgentAccessToken");
+  });
+
+  it("embeds the hosted plan and agent identifiers in the installation contract", () => {
+    expect(agentInstallationMarkdown).toContain(EMBEDDED_PLAN_ID);
+    expect(agentInstallationMarkdown).toContain(EMBEDDED_AGENT_ID);
   });
 
   it("keeps the homepage installation panel tied to the shared hosted contract", () => {

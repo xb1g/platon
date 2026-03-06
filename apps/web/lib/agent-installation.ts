@@ -3,6 +3,10 @@ export const AGENT_INSTALLATION_PATH = "/agent-installation.md";
 export const AGENT_INSTALLATION_URL = `${AGENT_INSTALLATION_BASE_URL}${AGENT_INSTALLATION_PATH}`;
 export const MCP_ENDPOINT_URL = `${AGENT_INSTALLATION_BASE_URL}/mcp`;
 export const API_BASE_URL = `${AGENT_INSTALLATION_BASE_URL}/api`;
+export const EMBEDDED_PLAN_ID =
+  "73169765125098902371333949161624114039157379307050553178571193711771922123338";
+export const EMBEDDED_AGENT_ID =
+  "19346478288243105495031065907200687372039626635874134001440870868803651261845";
 
 export const agentOperatorPrompt = `Install Platon memory for this agent.
 
@@ -98,6 +102,11 @@ Use:
 
 For the hosted paid service, subscribe with a Nevermined subscriber key and generate an x402 token before calling MCP or the direct HTTP API:
 
+Hosted Platon uses these identifiers:
+
+- \`NVM_PLAN_ID=${EMBEDDED_PLAN_ID}\`
+- \`NVM_AGENT_ID=${EMBEDDED_AGENT_ID}\`
+
 \`\`\`ts
 import { Payments } from "@nevermined-io/payments";
 
@@ -107,11 +116,11 @@ const subscriberPayments = Payments.getInstance({
 });
 
 // First purchase only. Skip when you already have balance on the plan.
-await subscriberPayments.plans.orderPlan(process.env.NVM_PLAN_ID!);
+await subscriberPayments.plans.orderPlan("${EMBEDDED_PLAN_ID}");
 
 const { accessToken } = await subscriberPayments.x402.getX402AccessToken(
-  process.env.NVM_PLAN_ID!,
-  process.env.NVM_AGENT_ID!,
+  "${EMBEDDED_PLAN_ID}",
+  "${EMBEDDED_AGENT_ID}",
 );
 \`\`\`
 

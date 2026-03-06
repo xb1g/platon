@@ -8,6 +8,7 @@ import { ensureAgentIdentityMatches, getVerifiedAuthContext } from "../lib/verif
 import { getRetrievalFeedbackSummaries } from "../lib/retrieval/feedback-store.js";
 import { graphSearch } from "../lib/retrieval/graph-search.js";
 import { vectorSearch } from "../lib/retrieval/vector-search.js";
+import { exaSearch } from "../lib/retrieval/exa-search.js";
 import { rankResults } from "../lib/retrieval/rank.js";
 
 export const retrieveRoutes: FastifyPluginAsync = async (server) => {
@@ -32,23 +33,26 @@ export const retrieveRoutes: FastifyPluginAsync = async (server) => {
           agentId: authContext.agentId
         });
 
-        const graphResults = await graphSearch(
-          {
-            namespaceId: namespace.namespaceId,
-            query: data.query,
-            limit: data.limit,
-            filters: data.filters
-          },
-          { session }
-        );
-        const vectorResults = await vectorSearch(
-          {
-            namespaceId: namespace.namespaceId,
-            query: data.query,
-            limit: data.limit
-          },
-          { session }
-        );
+        const [graphResults, vectorResults, exaResults] = await Promise.all([
+          graphSearch(
+            {
+              namespaceId: namespace.namespaceId,
+              query: data.query,
+              limit: data.limit,
+              filters: data.filters
+            },
+            { session }
+          ),
+          vectorSearch(
+            {
+              namespaceId: namespace.namespaceId,
+              query: data.query,
+              limit: data.limit
+            },
+            { session }
+          ),
+          exaSearch(data.query, data.limit),
+        ]);
         const feedbackByMemoryId = await getRetrievalFeedbackSummaries({
           subscriberId: authContext.subscriberId,
           agentId: authContext.agentId,
@@ -66,7 +70,7 @@ export const retrieveRoutes: FastifyPluginAsync = async (server) => {
         ).filter((result) => !shouldFilterRetrievedMemory(result));
 
         return reply.status(200).send({
-          results: rankedResults,
+          results: [...rankedResults, ...exaResults],
           subscriberId: authContext.subscriberId,
           agentId: authContext.agentId,
           agentKind: authContext.agentKind
