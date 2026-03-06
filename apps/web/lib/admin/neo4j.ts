@@ -182,6 +182,150 @@ export const getRecentNodes = async (limit = 10): Promise<AdminRecentNode[]> => 
   }
 };
 
+export type AdminSubscriberSummary = {
+  subscriberId: string;
+  namespaceCount: number;
+  sessionCount: number;
+  learningCount: number;
+};
+
+export type AdminSubscriberNamespace = {
+  namespaceId: string;
+  agentKind: string;
+  agentId: string;
+  sessionCount: number;
+  learningCount: number;
+};
+
+export type AdminSubscriberLearning = {
+  id: string;
+  title: string;
+  status: string | null;
+  confidence: number | null;
+  qualityScore: number | null;
+};
+
+export type AdminSubscriberGraphData = {
+  subscriberId: string;
+  namespaceCount: number;
+  sessionCount: number;
+  learningCount: number;
+  namespaces: AdminSubscriberNamespace[];
+  recentLearnings: AdminSubscriberLearning[];
+};
+
+export const listSubscribers = async (): Promise<AdminSubscriberSummary[]> => {
+  const session = getDriver().session();
+  try {
+    const result = await session.run(`
+      MATCH (ns:MemoryNamespace)
+      WITH ns.subscriberId AS subscriberId, count(DISTINCT ns) AS namespaceCount
+      MATCH (ns2:MemoryNamespace)
+      WHERE ns2.subscriberId = subscriberId
+      OPTIONAL MATCH (ns2)-[:HAS_SESSION]->(s:Session)
+      OPTIONAL MATCH (ns2)-[:HAS_LEARNING]->(l:Learning)
+      RETURN
+        subscriberId,
+        namespaceCount,
+        count(DISTINCT s) AS sessionCount,
+        count(DISTINCT l) AS learningCount
+      ORDER BY sessionCount DESC, subscriberId ASC
+    `);
+
+    return result.records.map((record: Neo4jRecordLike) => ({
+      subscriberId: String(record.get('subscriberId')),
+      namespaceCount: intValue(record.get('namespaceCount')),
+      sessionCount: intValue(record.get('sessionCount')),
+      learningCount: intValue(record.get('learningCount')),
+    }));
+  } finally {
+    await session.close();
+  }
+};
+
+export const getSubscriberGraph = async (
+  subscriberId: string,
+): Promise<AdminSubscriberGraphData> => {
+  const session = getDriver().session();
+  try {
+    const [nsResult, learningsResult] = await Promise.all([
+      session.run(
+        `
+          MATCH (ns:MemoryNamespace { subscriberId: $subscriberId })
+          OPTIONAL MATCH (ns)-[:HAS_SESSION]->(s:Session)
+          OPTIONAL MATCH (ns)-[:HAS_LEARNING]->(l:Learning)
+          RETURN
+            ns.namespaceId AS namespaceId,
+            coalesce(ns.agentKind, '') AS agentKind,
+            coalesce(ns.agentId, '') AS agentId,
+            count(DISTINCT s) AS sessionCount,
+            count(DISTINCT l) AS learningCount
+          ORDER BY sessionCount DESC
+        `,
+        { subscriberId },
+      ),
+      session.run(
+        `
+          MATCH (ns:MemoryNamespace { subscriberId: $subscriberId })-[:HAS_LEARNING]->(l:Learning)
+          RETURN
+            coalesce(l.id, l.learningKey) AS id,
+            coalesce(l.title, l.summary, l.id) AS title,
+            l.status AS status,
+            l.confidence AS confidence,
+            l.qualityScore AS qualityScore
+          ORDER BY coalesce(l.updatedAt, l.createdAt) DESC
+          LIMIT 20
+        `,
+        { subscriberId },
+      ),
+    ]);
+
+    const namespaces: AdminSubscriberNamespace[] = nsResult.records.map(
+      (record: Neo4jRecordLike) => ({
+        namespaceId: String(record.get('namespaceId')),
+        agentKind: String(record.get('agentKind')),
+        agentId: String(record.get('agentId')),
+        sessionCount: intValue(record.get('sessionCount')),
+        learningCount: intValue(record.get('learningCount')),
+      }),
+    );
+
+    const recentLearnings: AdminSubscriberLearning[] =
+      learningsResult.records.map((record: Neo4jRecordLike) => ({
+        id: String(record.get('id') ?? ''),
+        title: String(record.get('title') ?? ''),
+        status: record.get('status') ? String(record.get('status')) : null,
+        confidence:
+          record.get('confidence') != null
+            ? Number(record.get('confidence'))
+            : null,
+        qualityScore:
+          record.get('qualityScore') != null
+            ? Number(record.get('qualityScore'))
+            : null,
+      }));
+
+    const totals = namespaces.reduce(
+      (acc, ns) => ({
+        sessionCount: acc.sessionCount + ns.sessionCount,
+        learningCount: acc.learningCount + ns.learningCount,
+      }),
+      { sessionCount: 0, learningCount: 0 },
+    );
+
+    return {
+      subscriberId,
+      namespaceCount: namespaces.length,
+      sessionCount: totals.sessionCount,
+      learningCount: totals.learningCount,
+      namespaces,
+      recentLearnings,
+    };
+  } finally {
+    await session.close();
+  }
+};
+
 export const closeAdminNeo4jDriver = async () => {
   if (!driver) {
     return;

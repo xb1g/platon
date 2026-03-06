@@ -3,10 +3,17 @@ import {
   getLabelCounts as defaultGetLabelCounts,
   getRecentNodes as defaultGetRecentNodes,
   getRelationshipCounts as defaultGetRelationshipCounts,
+  listSubscribers as defaultListSubscribers,
+  getSubscriberGraph as defaultGetSubscriberGraph,
   type AdminGraphCountRow,
   type AdminGraphSummary,
   type AdminRecentNode,
+  type AdminSubscriberSummary,
+  type AdminSubscriberGraphData,
+  type AdminSubscriberNamespace,
+  type AdminSubscriberLearning,
 } from "./neo4j";
+
 import {
   getOverviewCounts as defaultGetOverviewCounts,
   getSessionDetail as defaultGetSessionDetail,
@@ -24,6 +31,8 @@ import {
   getQueueSummary as defaultGetQueueSummary,
   type AdminQueueSummary,
 } from "./redis";
+
+export type { AdminSubscriberSummary, AdminSubscriberGraphData, AdminSubscriberNamespace, AdminSubscriberLearning };
 
 type AdminDeps = {
   postgres?: {
@@ -48,6 +57,8 @@ type AdminDeps = {
     getLabelCounts?: () => Promise<AdminGraphCountRow[]>;
     getRelationshipCounts?: () => Promise<AdminGraphCountRow[]>;
     getRecentNodes?: (limit?: number) => Promise<AdminRecentNode[]>;
+    listSubscribers?: () => Promise<AdminSubscriberSummary[]>;
+    getSubscriberGraph?: (subscriberId: string) => Promise<AdminSubscriberGraphData>;
   };
   queue?: {
     getQueueSummary?: () => Promise<AdminQueueSummary>;
@@ -142,6 +153,9 @@ const getDeps = (deps?: AdminDeps) => ({
     getRelationshipCounts:
       deps?.neo4j?.getRelationshipCounts ?? defaultGetRelationshipCounts,
     getRecentNodes: deps?.neo4j?.getRecentNodes ?? defaultGetRecentNodes,
+    listSubscribers: deps?.neo4j?.listSubscribers ?? defaultListSubscribers,
+    getSubscriberGraph:
+      deps?.neo4j?.getSubscriberGraph ?? defaultGetSubscriberGraph,
   },
   queue: {
     getQueueSummary: deps?.queue?.getQueueSummary ?? defaultGetQueueSummary,
@@ -366,4 +380,19 @@ export const getAdminGraphData = async (
     recentNodes,
     queue,
   };
+};
+
+export const listAdminSubscribers = async (
+  deps?: AdminDeps,
+): Promise<AdminSubscriberSummary[]> => {
+  const resolved = getDeps(deps);
+  return resolved.neo4j.listSubscribers();
+};
+
+export const getAdminSubscriberGraphData = async (
+  subscriberId: string,
+  deps?: AdminDeps,
+): Promise<AdminSubscriberGraphData> => {
+  const resolved = getDeps(deps);
+  return resolved.neo4j.getSubscriberGraph(subscriberId);
 };
