@@ -7,15 +7,7 @@ import {
   type VerifyPermissionsResult,
   type X402PaymentRequired
 } from "@nevermined-io/payments";
-
-type NeverminedEnvironment = "sandbox" | "live";
-
-type NeverminedConfig = {
-  agentId: string;
-  apiKey: string;
-  environment: NeverminedEnvironment;
-  planId: string;
-};
+import { loadNeverminedConfig, type NeverminedConfig } from "../lib/nevermined.js";
 
 type PaymentsClient = {
   facilitator: {
@@ -167,23 +159,6 @@ const sendPaymentRequired = (
     error: "Payment Required",
     message
   });
-
-const loadNeverminedConfig = (): NeverminedConfig | null => {
-  const apiKey = process.env.NVM_API_KEY;
-  const planId = process.env.NVM_PLAN_ID;
-  const agentId = process.env.NVM_AGENT_ID;
-
-  if (!apiKey || !planId || !agentId) {
-    return null;
-  }
-
-  return {
-    apiKey,
-    agentId,
-    environment: process.env.NVM_ENVIRONMENT === "live" ? "live" : "sandbox",
-    planId
-  };
-};
 
 const createPaymentsClient = (config: NeverminedConfig): PaymentsClient =>
   Payments.getInstance({

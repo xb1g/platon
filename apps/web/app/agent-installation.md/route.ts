@@ -1,4 +1,4 @@
-import { agentInstallationMarkdown } from "@/lib/agent-installation";
+import { agentInstallationMarkdown } from "../../lib/agent-installation";
 
 export function GET() {
   return new Response(agentInstallationMarkdown, {

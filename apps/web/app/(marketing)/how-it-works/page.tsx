@@ -225,7 +225,7 @@ const dumpSessionMcp = `{
 }`;
 
 const dumpSessionCurl = `curl -X POST https://api.platon.dev/sessions \\
-  -H "Authorization: Bearer $PLATON_API_KEY" \\
+  -H "payment-signature: $X402_ACCESS_TOKEN" \\
   -H "Content-Type: application/json" \\
   -d '{
     "agentKind": "code-reviewer",
@@ -305,10 +305,9 @@ const getSimilarFailuresResponse = `{
 const claudeDesktopConfig = `{
   "mcpServers": {
     "platon": {
-      "command": "npx",
-      "args": ["-y", "@platon/mcp-server"],
-      "env": {
-        "PLATON_API_KEY": "your-api-key"
+      "url": "https://platon.bigf.me/mcp",
+      "headers": {
+        "Authorization": "Bearer \${X402_ACCESS_TOKEN}"
       }
     }
   }
@@ -317,23 +316,36 @@ const claudeDesktopConfig = `{
 const cursorConfig = `{
   "mcpServers": {
     "platon": {
-      "command": "npx",
-      "args": ["-y", "@platon/mcp-server"],
-      "env": {
-        "PLATON_API_KEY": "your-api-key"
+      "url": "https://platon.bigf.me/mcp",
+      "headers": {
+        "Authorization": "Bearer \${X402_ACCESS_TOKEN}"
       }
     }
   }
 }`;
 
-const customAgentTs = `import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
+const customAgentTs = `import { Payments } from "@nevermined-io/payments";
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 
-const transport = new StdioClientTransport({
-  command: "npx",
-  args: ["-y", "@platon/mcp-server"],
-  env: { PLATON_API_KEY: process.env.PLATON_API_KEY! },
+const subscriberPayments = Payments.getInstance({
+  nvmApiKey: process.env.NVM_SUBSCRIBER_API_KEY!,
+  environment: (process.env.NVM_ENVIRONMENT ?? "sandbox") as "sandbox" | "live",
 });
+
+const { accessToken: X402_ACCESS_TOKEN } = await subscriberPayments.x402.getX402AccessToken(
+  process.env.NVM_PLAN_ID!,
+  process.env.NVM_AGENT_ID!,
+);
+
+const transport = new StreamableHTTPClientTransport(
+  new URL("https://platon.bigf.me/mcp"),
+  {
+    requestInit: {
+      headers: { Authorization: \`Bearer \${X402_ACCESS_TOKEN}\` },
+    },
+  },
+);
 
 const client = new Client({ name: "my-agent", version: "1.0.0" });
 await client.connect(transport);
@@ -444,7 +456,7 @@ function DumpSessionCurlHighlighted() {
       <span className="text-accent-sky">https://api.platon.dev/sessions</span>
       <span className="text-white/30"> \</span>{"\n"}
       <span className="text-white/60">{"  "}-H </span>
-      <span className="text-accent-emerald">&quot;Authorization: Bearer $PLATON_API_KEY&quot;</span>
+      <span className="text-accent-emerald">&quot;payment-signature: $X402_ACCESS_TOKEN&quot;</span>
       <span className="text-white/30"> \</span>{"\n"}
       <span className="text-white/60">{"  "}-H </span>
       <span className="text-accent-emerald">&quot;Content-Type: application/json&quot;</span>
@@ -706,183 +718,15 @@ function GetSimilarFailuresResponseHighlighted() {
 }
 
 function ClaudeDesktopHighlighted() {
-  return (
-    <code>
-      <span className="text-white/40">{"{"}</span>{"\n"}
-      <span className="text-white/30">{"  "}</span>
-      <span className="text-accent-violet">&quot;mcpServers&quot;</span>
-      <span className="text-white/40">: {"{"}</span>{"\n"}
-      <span className="text-white/30">{"    "}</span>
-      <span className="text-accent-violet">&quot;platon&quot;</span>
-      <span className="text-white/40">: {"{"}</span>{"\n"}
-      <span className="text-white/30">{"      "}</span>
-      <span className="text-accent-sky">&quot;command&quot;</span>
-      <span className="text-white/40">: </span>
-      <span className="text-accent-emerald">&quot;npx&quot;</span>
-      <span className="text-white/40">,</span>{"\n"}
-      <span className="text-white/30">{"      "}</span>
-      <span className="text-accent-sky">&quot;args&quot;</span>
-      <span className="text-white/40">: [</span>
-      <span className="text-accent-emerald">&quot;-y&quot;</span>
-      <span className="text-white/40">, </span>
-      <span className="text-accent-emerald">&quot;@platon/mcp-server&quot;</span>
-      <span className="text-white/40">],</span>{"\n"}
-      <span className="text-white/30">{"      "}</span>
-      <span className="text-accent-sky">&quot;env&quot;</span>
-      <span className="text-white/40">: {"{"}</span>{"\n"}
-      <span className="text-white/30">{"        "}</span>
-      <span className="text-accent-amber">&quot;PLATON_API_KEY&quot;</span>
-      <span className="text-white/40">: </span>
-      <span className="text-accent-emerald">&quot;your-api-key&quot;</span>{"\n"}
-      <span className="text-white/30">{"      "}</span>
-      <span className="text-white/40">{"}"}</span>{"\n"}
-      <span className="text-white/30">{"    "}</span>
-      <span className="text-white/40">{"}"}</span>{"\n"}
-      <span className="text-white/30">{"  "}</span>
-      <span className="text-white/40">{"}"}</span>{"\n"}
-      <span className="text-white/40">{"}"}</span>
-    </code>
-  );
+  return <code>{claudeDesktopConfig}</code>;
 }
 
 function CursorConfigHighlighted() {
-  return (
-    <code>
-      <span className="text-white/40">{"{"}</span>{"\n"}
-      <span className="text-white/30">{"  "}</span>
-      <span className="text-accent-violet">&quot;mcpServers&quot;</span>
-      <span className="text-white/40">: {"{"}</span>{"\n"}
-      <span className="text-white/30">{"    "}</span>
-      <span className="text-accent-violet">&quot;platon&quot;</span>
-      <span className="text-white/40">: {"{"}</span>{"\n"}
-      <span className="text-white/30">{"      "}</span>
-      <span className="text-accent-sky">&quot;command&quot;</span>
-      <span className="text-white/40">: </span>
-      <span className="text-accent-emerald">&quot;npx&quot;</span>
-      <span className="text-white/40">,</span>{"\n"}
-      <span className="text-white/30">{"      "}</span>
-      <span className="text-accent-sky">&quot;args&quot;</span>
-      <span className="text-white/40">: [</span>
-      <span className="text-accent-emerald">&quot;-y&quot;</span>
-      <span className="text-white/40">, </span>
-      <span className="text-accent-emerald">&quot;@platon/mcp-server&quot;</span>
-      <span className="text-white/40">],</span>{"\n"}
-      <span className="text-white/30">{"      "}</span>
-      <span className="text-accent-sky">&quot;env&quot;</span>
-      <span className="text-white/40">: {"{"}</span>{"\n"}
-      <span className="text-white/30">{"        "}</span>
-      <span className="text-accent-amber">&quot;PLATON_API_KEY&quot;</span>
-      <span className="text-white/40">: </span>
-      <span className="text-accent-emerald">&quot;your-api-key&quot;</span>{"\n"}
-      <span className="text-white/30">{"      "}</span>
-      <span className="text-white/40">{"}"}</span>{"\n"}
-      <span className="text-white/30">{"    "}</span>
-      <span className="text-white/40">{"}"}</span>{"\n"}
-      <span className="text-white/30">{"  "}</span>
-      <span className="text-white/40">{"}"}</span>{"\n"}
-      <span className="text-white/40">{"}"}</span>
-    </code>
-  );
+  return <code>{cursorConfig}</code>;
 }
 
 function CustomAgentHighlighted() {
-  return (
-    <code>
-      <span className="text-accent-violet">import</span>
-      <span className="text-white/60"> {"{"} Client {"}"} </span>
-      <span className="text-accent-violet">from</span>
-      <span className="text-accent-emerald"> &quot;@modelcontextprotocol/sdk/client/index.js&quot;</span>
-      <span className="text-white/40">;</span>{"\n"}
-      <span className="text-accent-violet">import</span>
-      <span className="text-white/60"> {"{"} StdioClientTransport {"}"} </span>
-      <span className="text-accent-violet">from</span>
-      <span className="text-accent-emerald"> &quot;@modelcontextprotocol/sdk/client/stdio.js&quot;</span>
-      <span className="text-white/40">;</span>{"\n\n"}
-      <span className="text-accent-violet">const</span>
-      <span className="text-accent-sky"> transport</span>
-      <span className="text-white/40"> = </span>
-      <span className="text-accent-violet">new</span>
-      <span className="text-white/60"> StdioClientTransport</span>
-      <span className="text-white/40">({"{"}</span>{"\n"}
-      <span className="text-white/30">{"  "}</span>
-      <span className="text-accent-sky">command</span>
-      <span className="text-white/40">: </span>
-      <span className="text-accent-emerald">&quot;npx&quot;</span>
-      <span className="text-white/40">,</span>{"\n"}
-      <span className="text-white/30">{"  "}</span>
-      <span className="text-accent-sky">args</span>
-      <span className="text-white/40">: [</span>
-      <span className="text-accent-emerald">&quot;-y&quot;</span>
-      <span className="text-white/40">, </span>
-      <span className="text-accent-emerald">&quot;@platon/mcp-server&quot;</span>
-      <span className="text-white/40">],</span>{"\n"}
-      <span className="text-white/30">{"  "}</span>
-      <span className="text-accent-sky">env</span>
-      <span className="text-white/40">: {"{"} </span>
-      <span className="text-accent-amber">PLATON_API_KEY</span>
-      <span className="text-white/40">: </span>
-      <span className="text-white/60">process.env.</span>
-      <span className="text-accent-amber">PLATON_API_KEY</span>
-      <span className="text-white/40">! {"}"}</span>
-      <span className="text-white/40">,</span>{"\n"}
-      <span className="text-white/40">{"})"}</span>
-      <span className="text-white/40">;</span>{"\n\n"}
-      <span className="text-accent-violet">const</span>
-      <span className="text-accent-sky"> client</span>
-      <span className="text-white/40"> = </span>
-      <span className="text-accent-violet">new</span>
-      <span className="text-white/60"> Client</span>
-      <span className="text-white/40">({"{"} </span>
-      <span className="text-accent-sky">name</span>
-      <span className="text-white/40">: </span>
-      <span className="text-accent-emerald">&quot;my-agent&quot;</span>
-      <span className="text-white/40">, </span>
-      <span className="text-accent-sky">version</span>
-      <span className="text-white/40">: </span>
-      <span className="text-accent-emerald">&quot;1.0.0&quot;</span>
-      <span className="text-white/40"> {"}"});</span>{"\n"}
-      <span className="text-accent-violet">await</span>
-      <span className="text-white/60"> client.</span>
-      <span className="text-accent-sky">connect</span>
-      <span className="text-white/40">(transport);</span>{"\n\n"}
-      <span className="text-white/30">{"// Retrieve context before a task"}</span>{"\n"}
-      <span className="text-accent-violet">const</span>
-      <span className="text-accent-sky"> context</span>
-      <span className="text-white/40"> = </span>
-      <span className="text-accent-violet">await</span>
-      <span className="text-white/60"> client.</span>
-      <span className="text-accent-sky">callTool</span>
-      <span className="text-white/40">({"{"}</span>{"\n"}
-      <span className="text-white/30">{"  "}</span>
-      <span className="text-accent-sky">name</span>
-      <span className="text-white/40">: </span>
-      <span className="text-accent-emerald">&quot;memory.retrieve_context&quot;</span>
-      <span className="text-white/40">,</span>{"\n"}
-      <span className="text-white/30">{"  "}</span>
-      <span className="text-accent-sky">arguments</span>
-      <span className="text-white/40">: {"{"}</span>{"\n"}
-      <span className="text-white/30">{"    "}</span>
-      <span className="text-accent-violet">agentKind</span>
-      <span className="text-white/40">: </span>
-      <span className="text-accent-emerald">&quot;my-agent-type&quot;</span>
-      <span className="text-white/40">,</span>{"\n"}
-      <span className="text-white/30">{"    "}</span>
-      <span className="text-accent-violet">agentId</span>
-      <span className="text-white/40">: </span>
-      <span className="text-accent-emerald">&quot;agent-01&quot;</span>
-      <span className="text-white/40">,</span>{"\n"}
-      <span className="text-white/30">{"    "}</span>
-      <span className="text-accent-violet">query</span>
-      <span className="text-white/40">: </span>
-      <span className="text-accent-emerald">&quot;current task description&quot;</span>
-      <span className="text-white/40">,</span>{"\n"}
-      <span className="text-white/30">{"  "}</span>
-      <span className="text-white/40">{"}"}</span>
-      <span className="text-white/40">,</span>{"\n"}
-      <span className="text-white/40">{"})"}</span>
-      <span className="text-white/40">;</span>
-    </code>
-  );
+  return <code>{customAgentTs}</code>;
 }
 
 /* ─── Main page ─── */

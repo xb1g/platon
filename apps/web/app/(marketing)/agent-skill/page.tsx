@@ -8,14 +8,25 @@ const plainTextContent = `# Platon MCP Service Reference
 
 ## Installation
 
-Add Platon to your MCP configuration (mcp.json):
+For the hosted MCP service, generate an x402 token and attach it at the transport layer:
+
+const subscriberPayments = Payments.getInstance({
+  nvmApiKey: process.env.NVM_SUBSCRIBER_API_KEY!,
+  environment: process.env.NVM_ENVIRONMENT || "sandbox"
+})
+
+const { accessToken } = await subscriberPayments.x402.getX402AccessToken(
+  process.env.NVM_PLAN_ID!,
+  process.env.NVM_AGENT_ID!
+)
+
+Then add Platon to your MCP configuration (mcp.json):
 
 {
   "mcpServers": {
     "platon": {
-      "command": "npx",
-      "args": ["-y", "@platon/mcp-server"],
-      "env": { "PLATON_API_KEY": "your-api-key" }
+      "url": "https://platon.bigf.me/mcp",
+      "headers": { "Authorization": "Bearer \${X402_ACCESS_TOKEN}" }
     }
   }
 }
@@ -281,15 +292,25 @@ export default function AgentSkillPage() {
         {/* Installation */}
         <Section title="Installation">
           <p className="text-text-secondary leading-relaxed mb-4">
-            Add Platon to your MCP configuration file (<code className="text-accent-emerald text-sm">mcp.json</code>):
+            Generate an x402 token with a Nevermined subscriber key, then add
+            Platon to your MCP configuration file (<code className="text-accent-emerald text-sm">mcp.json</code>):
           </p>
           <CodeBlock>
-            {`{
+            {`const subscriberPayments = Payments.getInstance({
+  nvmApiKey: process.env.NVM_SUBSCRIBER_API_KEY!,
+  environment: process.env.NVM_ENVIRONMENT || "sandbox"
+})
+
+const { accessToken } = await subscriberPayments.x402.getX402AccessToken(
+  process.env.NVM_PLAN_ID!,
+  process.env.NVM_AGENT_ID!
+)
+
+{
   "mcpServers": {
     "platon": {
-      "command": "npx",
-      "args": ["-y", "@platon/mcp-server"],
-      "env": { "PLATON_API_KEY": "your-api-key" }
+      "url": "https://platon.bigf.me/mcp",
+      "headers": { "Authorization": "Bearer \${accessToken}" }
     }
   }
 }`}

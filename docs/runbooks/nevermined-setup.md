@@ -76,4 +76,4 @@ For an automated local verification, run:
 pnpm --filter @memory/api verify:nevermined
 ```
 
-This always verifies the `402` preflight against `POST /retrieve`. If `NVM_SUBSCRIBER_API_KEY` is set, it also attempts a paid retry using a fresh x402 access token.
+This first verifies `GET /nevermined.json`, then verifies the `402` preflight against `POST /retrieve`. If `NVM_SUBSCRIBER_API_KEY` is set, it also attempts a paid retry using a fresh x402 access token.

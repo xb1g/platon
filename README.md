@@ -6,6 +6,8 @@ Developer-facing memory infrastructure for AI agent businesses. Agents dump sess
 
 The platform now includes paid x402 access for both the HTTP API and the HTTP MCP server. The MCP package uses native Nevermined paywall protection for memory tools, and forwards paid calls to the API through a trusted internal hop that avoids double settlement.
 
+The canonical hosted installation contract for operators and autonomous agents lives at `https://platon.bigf.me/agent-installation.md`. The homepage install panel and hosted markdown route are driven from the same shared source so agents can bootstrap from a stable URL instead of repo-specific prose.
+
 ## Workspace Layout
 
 - `apps/api` - ingestion and retrieval API package boundary
@@ -21,6 +23,15 @@ The platform now includes paid x402 access for both the HTTP API and the HTTP MC
 2. Run `pnpm install`
 3. Run `pnpm check:workspace`
 4. Register the API agent and credit plan with `pnpm --filter @memory/api register:nevermined`
+
+## Hosted Agent Installation
+
+When you are wiring Platon into another agent runtime, start with the hosted contract:
+
+1. Tell the agent or operator to read `https://platon.bigf.me/agent-installation.md`
+2. Keep `agentKind` and `agentId` stable across runs
+3. Retrieve context before each task and dump a session after each task
+4. Use `Authorization: Bearer <x402-access-token>` for remote MCP and `payment-signature: <x402-access-token>` for direct HTTP calls
 
 ## Local Boot Sequence
 
@@ -63,3 +74,9 @@ Refer to [docs/runbooks/nevermined-x402-flow.md](/Users/bunyasit/dev/platon/.wor
 - The dashboard can be added after the service layer is stable
 
 The architecture and product docs live in `docs/plans/`.
+
+## Runbooks
+
+- `docs/runbooks/executor-cron.md` explains how the autonomous executor should advance the production plan one task at a time.
+- `docs/runbooks/deploy-staging.md` covers verified staging pushes, deploy commands, smoke checks, and rollback triggers.
+- `docs/runbooks/deploy-production.md` covers the stricter production release path that Task 13 must follow.

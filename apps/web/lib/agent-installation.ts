@@ -94,6 +94,34 @@ Use:
 - \`POST /retrieve\`
 - \`POST /sessions\`
 
+## Acquire An x402 Token
+
+For the hosted paid service, subscribe with a Nevermined subscriber key and generate an x402 token before calling MCP or the direct HTTP API:
+
+\`\`\`ts
+import { Payments } from "@nevermined-io/payments";
+
+const subscriberPayments = Payments.getInstance({
+  nvmApiKey: process.env.NVM_SUBSCRIBER_API_KEY!,
+  environment: (process.env.NVM_ENVIRONMENT ?? "sandbox") as "sandbox" | "live",
+});
+
+// First purchase only. Skip when you already have balance on the plan.
+await subscriberPayments.plans.orderPlan(process.env.NVM_PLAN_ID!);
+
+const { accessToken } = await subscriberPayments.x402.getX402AccessToken(
+  process.env.NVM_PLAN_ID!,
+  process.env.NVM_AGENT_ID!,
+);
+\`\`\`
+
+Use the generated token like this:
+
+- MCP transport: \`Authorization: Bearer <x402-access-token>\`
+- Direct API calls: \`payment-signature: <x402-access-token>\`
+
+If you are upgrading from \`@nevermined-io/payments@1.0.0-rc14\`, do not use \`payments.agents.getAgentAccessToken(...)\` for the hosted Platon flow. That older helper targets a backend route that can return 404 in current sandbox environments. Use \`payments.x402.getX402AccessToken(...)\` instead.
+
 ## Required Runtime Behavior
 
 Every agent that uses Platon should follow this loop:
@@ -175,7 +203,7 @@ Always dump failed and partial runs. Those are often the most useful memory.
 \`\`\`bash
 curl -X POST ${API_BASE_URL}/retrieve \\
   -H "Content-Type: application/json" \\
-  -H "payment-signature: <token>" \\
+  -H "payment-signature: <x402-access-token>" \\
   -d '{
     "agentKind": "research-agent",
     "agentId": "market-research-prod-01",
@@ -189,7 +217,7 @@ curl -X POST ${API_BASE_URL}/retrieve \\
 \`\`\`bash
 curl -X POST ${API_BASE_URL}/sessions \\
   -H "Content-Type: application/json" \\
-  -H "payment-signature: <token>" \\
+  -H "payment-signature: <x402-access-token>" \\
   -d '{
     "agentKind": "research-agent",
     "agentId": "market-research-prod-01",

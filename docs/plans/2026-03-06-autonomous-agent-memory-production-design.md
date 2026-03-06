@@ -267,6 +267,32 @@ Each benchmark task must include:
 - number of retries
 - proportion of harmful retrievals
 
+## Installation, Delivery, And Execution Surfaces
+
+The system needs a single installation contract that both humans and autonomous agents can fetch without repository access.
+
+### Hosted installation contract
+
+Publish a canonical markdown document at `/agent-installation.md` and treat it as the source of truth for:
+
+- the short operator bootstrap prompt
+- remote MCP versus direct HTTP installation choices
+- the stable `agentKind` and `agentId` identity rules
+- the retrieve-before / dump-after operating loop
+- the x402 header requirements for paid transport
+
+The homepage installation panel should render from the same shared content source so copy-paste guidance cannot drift from the hosted contract.
+
+### Operator runbooks
+
+Production readiness also requires explicit operator runbooks for:
+
+- the cron executor that advances the implementation plan one task at a time
+- staging deploys with branch discipline, smoke checks, and rollback triggers
+- production deploys with release gates tied to verification and eval health
+
+The executor runbook must describe task-state transitions, `codex/` worktree creation, verification, commit and merge behavior, and blocker handling so unattended runs remain auditable.
+
 ## Overnight Automation Design
 
 The system needs an all-night autonomous regimen that continuously builds trust.

@@ -2,6 +2,10 @@
 
 Add persistent memory to your AI agents in minutes.
 
+The canonical hosted installation contract lives at `https://platon.bigf.me/agent-installation.md`.
+Use that URL when bootstrapping an autonomous agent. This guide expands on the transport,
+local development, and self-hosting details behind the hosted contract.
+
 ---
 
 ## Quick Start
@@ -25,6 +29,34 @@ Paid MCP calls use a Nevermined x402 token in the HTTP transport header:
 ```http
 Authorization: Bearer <x402-access-token>
 ```
+
+Backend diagnostics are available at:
+
+```text
+https://platon.bigf.me/nevermined.json
+```
+
+Use that endpoint to confirm the deployed `environment`, `planId`, `agentId`, and the canonical token-acquisition method before attempting a paid call.
+
+Acquire that token with a Nevermined subscriber key:
+
+```ts
+import { Payments } from "@nevermined-io/payments"
+
+const subscriberPayments = Payments.getInstance({
+  nvmApiKey: process.env.NVM_SUBSCRIBER_API_KEY!,
+  environment: (process.env.NVM_ENVIRONMENT ?? "sandbox") as "sandbox" | "live",
+})
+
+await subscriberPayments.plans.orderPlan(process.env.NVM_PLAN_ID!) // first purchase only
+
+const { accessToken } = await subscriberPayments.x402.getX402AccessToken(
+  process.env.NVM_PLAN_ID!,
+  process.env.NVM_AGENT_ID!,
+)
+```
+
+If you are upgrading from `@nevermined-io/payments@1.0.0-rc14`, do not use `payments.agents.getAgentAccessToken(...)` for Platon. That older helper can hit a sandbox route that returns `404`. Use `payments.x402.getX402AccessToken(...)` instead.
 
 Your agent now has access to three tools:
 

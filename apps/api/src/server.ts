@@ -1,6 +1,7 @@
 import cors from "@fastify/cors";
 import Fastify from "fastify";
 import { fileURLToPath } from "node:url";
+import { buildNeverminedDiagnostics, loadNeverminedConfig } from "./lib/nevermined.js";
 import { authPlugin } from "./plugins/auth.js";
 import { paywallPlugin, type PaywallPluginOptions } from "./plugins/paywall.js";
 import { retrieveRoutes } from "./routes/retrieve.js";
@@ -10,6 +11,7 @@ export const buildServer = async (options: { paywall?: PaywallPluginOptions } = 
   const server = Fastify({
     logger: true
   });
+  const neverminedConfig = options.paywall?.config ?? loadNeverminedConfig();
 
   await server.register(cors, {
     origin: "*"
@@ -19,6 +21,10 @@ export const buildServer = async (options: { paywall?: PaywallPluginOptions } = 
   await server.register(authPlugin);
   await server.register(sessionRoutes, { prefix: "/sessions" });
   await server.register(retrieveRoutes, { prefix: "/retrieve" });
+
+  server.get("/nevermined.json", async () => {
+    return buildNeverminedDiagnostics(neverminedConfig);
+  });
 
   server.get("/openapi.json", async () => {
     return {
@@ -52,6 +58,15 @@ export const buildServer = async (options: { paywall?: PaywallPluginOptions } = 
             responses: {
               "200": { description: "Relevant context returned" },
               "402": { description: "Payment required" }
+            }
+          }
+        },
+        "/nevermined.json": {
+          get: {
+            operationId: "neverminedDiagnostics",
+            summary: "Inspect Nevermined runtime configuration and token guidance",
+            responses: {
+              "200": { description: "Nevermined diagnostics returned" }
             }
           }
         }
