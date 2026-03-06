@@ -97,6 +97,50 @@ describe('Reflect Session Job', () => {
     expect(firstLearningParams.learningKey).not.toBe(secondLearningParams.learningKey);
   });
 
+  it('loads the raw session from storage before reflecting queued jobs', async () => {
+    const loadRawSession = vi.fn().mockResolvedValue({
+      agentId: baseNamespace.agentId,
+      agentKind: baseNamespace.agentKind,
+      sessionId: reflection.sessionId,
+      task: { kind: 'incident', summary: 'Investigate Redis timeout' },
+      outcome: { status: 'failed', summary: 'Redis reads failed during failover' },
+      errors: [{ message: 'Redis timed out while reading the cache' }],
+      events: [],
+      tools: [],
+      artifacts: [],
+    });
+
+    llmReflect.mockResolvedValue(reflection);
+
+    await reflectSession(
+      {
+        rawSessionId: 1,
+        ...baseNamespace,
+      },
+      {
+        loadRawSession,
+      } as any
+    );
+
+    expect(loadRawSession).toHaveBeenCalledWith({
+      rawSessionId: 1,
+      subscriberId: baseNamespace.subscriberId,
+      agentKind: baseNamespace.agentKind,
+      agentId: baseNamespace.agentId,
+    });
+    expect(llmReflect).toHaveBeenCalledWith({
+      agentId: baseNamespace.agentId,
+      agentKind: baseNamespace.agentKind,
+      sessionId: reflection.sessionId,
+      task: { kind: 'incident', summary: 'Investigate Redis timeout' },
+      outcome: { status: 'failed', summary: 'Redis reads failed during failover' },
+      errors: [{ message: 'Redis timed out while reading the cache' }],
+      events: [],
+      tools: [],
+      artifacts: [],
+    });
+  });
+
   it('persisted raw session with failures produces namespace merge, session merge, learning merge, and failed session status in Neo4j', async () => {
     const failureReflection: ReflectionData = {
       sessionId: 'session-fail-456',

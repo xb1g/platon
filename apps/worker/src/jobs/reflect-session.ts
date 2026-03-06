@@ -1,22 +1,24 @@
 import { llmReflect } from '../lib/llm.js';
+import {
+  getRawSessionById,
+  sessionStoreStatus,
+  type RawSessionLookup,
+  type StoredSessionPayload,
+} from '../lib/session-store.js';
 import { storeReflection } from '../lib/store-reflection.js';
-import { sessionStoreStatus } from '../lib/session-store.js';
 import type { NamespaceParams } from '../lib/memory-namespace.js';
 import type { ReflectionData, StoreReflectionDeps } from '../lib/store-reflection.js';
 
-export type ReflectSessionInput = {
+export type DirectReflectSessionInput = StoredSessionPayload & {
   subscriberId: string;
-  agentKind: string;
-  agentId: string;
-  sessionId: string;
-  task: { kind: string; summary: string };
-  outcome: { status: string; summary: string };
   rawSessionId?: number;
-  tools?: Array<{ name: string; category: string }>;
-  events?: Array<{ type: string; summary: string }>;
-  artifacts?: Array<{ kind: string; uri: string; summary?: string }>;
-  errors?: Array<{ message: string; code?: string; retryable?: boolean }>;
 };
+
+export type StoredReflectSessionInput = RawSessionLookup & {
+  rawSessionId: number;
+};
+
+export type ReflectSessionInput = DirectReflectSessionInput | StoredReflectSessionInput;
 
 export type SessionStoreStatus = {
   markReflectionProcessing: (rawSessionId: number) => Promise<void>;
@@ -25,8 +27,23 @@ export type SessionStoreStatus = {
 };
 
 export type ReflectSessionDeps = StoreReflectionDeps & {
-  reflect?: (data: ReflectSessionInput) => Promise<ReflectionData>;
+  reflect?: (data: StoredSessionPayload) => Promise<ReflectionData>;
+  loadRawSession?: (lookup: RawSessionLookup) => Promise<StoredSessionPayload>;
   sessionStore?: SessionStoreStatus;
+};
+
+const isStoredSessionInput = (data: ReflectSessionInput): data is StoredReflectSessionInput =>
+  !('task' in data);
+
+const hydrateSession = async (
+  data: ReflectSessionInput,
+  deps?: ReflectSessionDeps
+): Promise<StoredSessionPayload> => {
+  if (isStoredSessionInput(data)) {
+    return (deps?.loadRawSession ?? getRawSessionById)(data);
+  }
+
+  return data;
 };
 
 export const reflectSession = async (
@@ -46,7 +63,8 @@ export const reflectSession = async (
   }
 
   try {
-    const reflection = await (deps?.reflect ?? llmReflect)(data);
+    const session = await hydrateSession(data, deps);
+    const reflection = deps?.reflect ? await deps.reflect(session) : await llmReflect(session);
 
     await storeReflection(reflection, namespace, deps);
 

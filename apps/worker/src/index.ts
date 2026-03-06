@@ -1,12 +1,16 @@
-import { Worker } from 'bullmq';
+import { Worker, type Job } from 'bullmq';
 import { redis } from './lib/redis.js';
-import { reflectSession } from './jobs/reflect-session.js';
+import { reflectSession, type ReflectSessionInput } from './jobs/reflect-session.js';
 
-const worker = new Worker('reflection-queue', async job => {
+export const processReflectionJob = async (job: Job<ReflectSessionInput>) => {
   if (job.name === 'reflect-session') {
     await reflectSession(job.data);
   }
-}, { connection: redis });
+};
+
+const worker = new Worker<ReflectSessionInput>('reflection-queue', processReflectionJob, {
+  connection: redis,
+});
 
 worker.on('completed', job => {
   console.log(`${job.id} has completed!`);
