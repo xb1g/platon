@@ -1,6 +1,11 @@
 import { createHash } from 'node:crypto';
 import type { Session as Neo4jSession } from 'neo4j-driver';
 import { resolveNamespace, type NamespaceParams } from './memory-namespace.js';
+import {
+  resolveLearningGovernance,
+  writeLearningGovernance,
+  type GovernedLearning,
+} from './store-memory-governance.js';
 
 export type ReflectionData = {
   sessionId: string;
@@ -10,7 +15,7 @@ export type ReflectionData = {
   wentWrong: string[];
   likelyCauses: string[];
   reusableTactics: string[];
-  learnings: Array<{ title: string; confidence: number }>;
+  learnings: GovernedLearning[];
   confidence: number;
 };
 
@@ -73,6 +78,7 @@ export const storeReflection = async (
 
   for (const learning of reflection.learnings) {
     const learningKey = createScopedKey(ns.namespaceId, learning.title);
+    const governance = resolveLearningGovernance(learning);
 
     await deps.session.run(
       `MATCH (ns:MemoryNamespace { namespaceId: $namespaceId })-[:HAS_SESSION]->(s:Session { sessionKey: $sessionKey })
@@ -82,8 +88,16 @@ export const storeReflection = async (
                      l.title = $title,
                      l.summary = $title,
                      l.confidence = $confidence,
+                     l.qualityScore = $qualityScore,
+                     l.status = $status,
+                     l.rawSessionId = $rawSessionId,
+                     l.reflectionVersion = $reflectionVersion,
                      l.createdAt = datetime()
        ON MATCH SET  l.confidence = $confidence,
+                     l.qualityScore = $qualityScore,
+                     l.status = $status,
+                     l.rawSessionId = $rawSessionId,
+                     l.reflectionVersion = $reflectionVersion,
                      l.updatedAt = datetime()
        MERGE (s)-[:PRODUCED]->(l)
        MERGE (ns)-[:HAS_LEARNING]->(l)`,
@@ -94,7 +108,20 @@ export const storeReflection = async (
         learningKey,
         title: learning.title,
         confidence: learning.confidence,
+        qualityScore: governance.qualityScore,
+        status: governance.status,
+        rawSessionId: governance.rawSessionId,
+        reflectionVersion: governance.reflectionVersion,
       }
     );
+
+    await writeLearningGovernance({
+      session: deps.session,
+      namespaceId: ns.namespaceId,
+      learningKey,
+      learning,
+      status: governance.status,
+      qualityScore: governance.qualityScore,
+    });
   }
 };

@@ -235,6 +235,62 @@ describe('Reflect Session Job', () => {
     expect(session.run.mock.calls[1][0]).toContain("s.status = CASE WHEN size($wentWrong) > 0 THEN 'failed' ELSE 'success' END");
   });
 
+  it('passes raw session provenance through to governed learning writes', async () => {
+    const session = {
+      run: vi.fn().mockResolvedValue({ records: [] }),
+    } as any;
+
+    const governedReflection = {
+      sessionId: 'session-governed-123',
+      taskSummary: 'Validate revised rollout notes',
+      outcomeSummary: 'Published the corrected rollout tactic.',
+      wentWell: ['Confirmed the new rollout policy with the operator runbook.'],
+      wentWrong: [],
+      likelyCauses: [],
+      reusableTactics: ['Publish runbook-backed deployment tactics only after validation.'],
+      learnings: [
+        {
+          title: 'Use canary rollback for the current deployment stack',
+          confidence: 0.93,
+          status: 'published' as const,
+          qualityScore: 0.95,
+          provenance: {
+            reflectionVersion: 'v2',
+          },
+        },
+      ],
+      confidence: 0.9,
+    };
+
+    await reflectSession(
+      {
+        ...baseNamespace,
+        rawSessionId: 'raw-session-789',
+        sessionId: 'session-governed-123',
+        task: { kind: 'deploy', summary: 'Validate revised rollout notes' },
+        outcome: { status: 'success', summary: 'Published the corrected rollout tactic.' },
+      },
+      {
+        session,
+        reflect: vi.fn().mockResolvedValue(governedReflection),
+        sessionStore: {
+          markReflectionProcessing: vi.fn().mockResolvedValue(undefined),
+          markReflectionCompleted: vi.fn().mockResolvedValue(undefined),
+          markReflectionFailed: vi.fn().mockResolvedValue(undefined),
+        },
+      }
+    );
+
+    const learningMergeParams = session.run.mock.calls[2][1];
+
+    expect(learningMergeParams).toMatchObject({
+      status: 'published',
+      qualityScore: 0.95,
+      rawSessionId: 'raw-session-789',
+      reflectionVersion: 'v2',
+    });
+  });
+
   describe('reflection status in Postgres', () => {
     it('sets reflection_status to processing when job starts', async () => {
       const markProcessing = vi.fn().mockResolvedValue(undefined);

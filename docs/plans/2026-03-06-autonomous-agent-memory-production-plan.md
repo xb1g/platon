@@ -94,7 +94,7 @@ The executor must respect this order:
 - [x] Task 1: Add live end-to-end smoke infrastructure
 - [x] Task 2: Replace heuristic reflection with model-backed structured reflection
 - [x] Task 3: Enrich the shared contracts for memory provenance and governance
-- [ ] Task 4: Persist richer graph entities and provenance
+- [~] Task 4: Persist richer graph entities and provenance
 - [ ] Task 5: Installation, Delivery, and Execution Masterplan
 - [ ] Task 6: Implement vector indexing, hybrid retrieval, and memory governance
 - [ ] Task 7: Build retrieval explanations and usefulness feedback loops
@@ -290,7 +290,7 @@ Execution note (2026-03-06T17:17:12Z):
 - Verification: `pnpm --filter @memory/shared test -- governance-contracts.test.ts` (pass), `pnpm --filter @memory/shared test` (pass)
 - Merge: not applicable; implemented directly in the primary worktree
 
-### [ ] Task 4: Persist richer graph entities and provenance
+### [~] Task 4: Persist richer graph entities and provenance
 
 **Files:**
 - Modify: `apps/worker/src/lib/store-reflection.ts`
