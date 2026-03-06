@@ -1,6 +1,12 @@
 import fp from "fastify-plugin";
 import type { FastifyReply, FastifyRequest } from "fastify";
-import { Payments } from "@nevermined-io/payments";
+import {
+  Payments,
+  buildPaymentRequired,
+  type SettlePermissionsResult,
+  type VerifyPermissionsResult,
+  type X402PaymentRequired
+} from "@nevermined-io/payments";
 
 type NeverminedEnvironment = "sandbox" | "live";
 
@@ -12,23 +18,18 @@ type NeverminedConfig = {
 };
 
 type PaymentsClient = {
-  requests: {
-    redeemCreditsFromRequest(agentRequestId: string, requestAccessToken: string, creditsToBurn: bigint): Promise<unknown>;
-    startProcessingRequest(
-      agentId: string,
-      accessToken: string,
-      urlRequested: string,
-      httpMethodRequested: string
-    ): Promise<{
-      agentRequestId: string;
-      agentId?: string;
-      agentKind?: string;
-      balance: {
-        isSubscriber: boolean;
-      };
-      planId?: string;
-      subscriberId?: string;
-    }>;
+  facilitator: {
+    verifyPermissions(params: {
+      paymentRequired: X402PaymentRequired;
+      x402AccessToken: string;
+      maxAmount?: bigint;
+    }): Promise<VerifyPermissionsResult>;
+    settlePermissions(params: {
+      paymentRequired: X402PaymentRequired;
+      x402AccessToken: string;
+      maxAmount?: bigint;
+      agentRequestId?: string;
+    }): Promise<SettlePermissionsResult>;
   };
 };
 
@@ -50,10 +51,10 @@ export type PaymentAuthContext = {
 };
 
 export type PaymentContext = {
-  agentRequestId: string;
+  agentRequestId?: string;
   authContext?: PaymentAuthContext;
   credits: bigint;
-  paymentRequired: unknown;
+  paymentRequired: X402PaymentRequired;
   skipSettlement?: boolean;
   token: string;
 };
@@ -102,20 +103,6 @@ const isTrustedInternalRequest = (request: FastifyRequest) => {
 const encodeHeaderValue = (value: unknown) =>
   Buffer.from(JSON.stringify(value)).toString("base64");
 
-const buildPaymentRequired = (config: NeverminedConfig) => ({
-  accepts: [
-    {
-      extra: {
-        agentId: config.agentId
-      },
-      network: config.environment === "live" ? "eip155:8453" : "eip155:84532",
-      planId: config.planId,
-      scheme: "nvm:erc4337"
-    }
-  ],
-  x402Version: 2
-});
-
 const buildRequestedUrl = (request: FastifyRequest) => {
   const host = request.headers.host ?? "localhost";
   const path = request.url.split("?")[0] ?? request.url;
@@ -123,23 +110,28 @@ const buildRequestedUrl = (request: FastifyRequest) => {
 };
 
 const deriveAuthContext = (
-  requestInfo: {
-    agentId?: string;
-    agentKind?: string;
-    planId?: string;
-    subscriberId?: string;
-  },
+  request: FastifyRequest,
+  verification: VerifyPermissionsResult,
   config: NeverminedConfig
 ): PaymentAuthContext | undefined => {
-  if (!requestInfo.subscriberId || !requestInfo.agentKind) {
+  const body = request.body;
+
+  if (!body || typeof body !== "object") {
+    return undefined;
+  }
+
+  const requestAgentId = "agentId" in body && typeof body.agentId === "string" ? body.agentId : undefined;
+  const requestAgentKind = "agentKind" in body && typeof body.agentKind === "string" ? body.agentKind : undefined;
+
+  if (!verification.payer || !requestAgentId || !requestAgentKind) {
     return undefined;
   }
 
   return {
-    subscriberId: requestInfo.subscriberId,
-    agentId: requestInfo.agentId ?? config.agentId,
-    agentKind: requestInfo.agentKind,
-    planId: requestInfo.planId ?? config.planId
+    subscriberId: verification.payer,
+    agentId: requestAgentId,
+    agentKind: requestAgentKind,
+    planId: config.planId
   };
 };
 
@@ -174,7 +166,7 @@ const createPaymentsClient = (config: NeverminedConfig): PaymentsClient =>
   Payments.getInstance({
     environment: config.environment,
     nvmApiKey: config.apiKey
-  }) as PaymentsClient;
+  }) as unknown as PaymentsClient;
 
 export const paywallPlugin = fp<PaywallPluginOptions>(async (server, options: PaywallPluginOptions) => {
   const config = options.config ?? loadNeverminedConfig();
@@ -195,7 +187,13 @@ export const paywallPlugin = fp<PaywallPluginOptions>(async (server, options: Pa
       return;
     }
 
-    const paymentRequired = buildPaymentRequired(config);
+    const paymentRequired = buildPaymentRequired(config.planId, {
+      endpoint: buildRequestedUrl(request),
+      agentId: config.agentId,
+      environment: config.environment,
+      httpVerb: request.method,
+      scheme: "nvm:erc4337"
+    });
 
     const token = getToken(request);
 
@@ -204,20 +202,23 @@ export const paywallPlugin = fp<PaywallPluginOptions>(async (server, options: Pa
     }
 
     try {
-      const requestInfo = await payments.requests.startProcessingRequest(
-        config.agentId,
-        token,
-        buildRequestedUrl(request),
-        request.method
-      );
+      const verification = await payments.facilitator.verifyPermissions({
+        paymentRequired,
+        x402AccessToken: token,
+        maxAmount: routeConfig.credits
+      });
 
-      if (!requestInfo.balance.isSubscriber) {
-        return sendPaymentRequired(reply, paymentRequired, "Insufficient credits");
+      if (!verification.isValid) {
+        return sendPaymentRequired(
+          reply,
+          paymentRequired,
+          verification.invalidReason ?? "Invalid x402 access token"
+        );
       }
 
       request.paymentContext = {
-        agentRequestId: requestInfo.agentRequestId,
-        authContext: deriveAuthContext(requestInfo, config),
+        agentRequestId: verification.agentRequestId,
+        authContext: deriveAuthContext(request, verification, config),
         credits: routeConfig.credits,
         paymentRequired,
         skipSettlement: isTrustedInternalRequest(request),
@@ -233,11 +234,12 @@ export const paywallPlugin = fp<PaywallPluginOptions>(async (server, options: Pa
       return payload;
     }
 
-    const settlement = await payments.requests.redeemCreditsFromRequest(
-      request.paymentContext.agentRequestId,
-      request.paymentContext.token,
-      request.paymentContext.credits
-    );
+    const settlement = await payments.facilitator.settlePermissions({
+      paymentRequired: request.paymentContext.paymentRequired,
+      x402AccessToken: request.paymentContext.token,
+      maxAmount: request.paymentContext.credits,
+      agentRequestId: request.paymentContext.agentRequestId
+    });
 
     reply.header("payment-response", encodeHeaderValue(settlement));
 

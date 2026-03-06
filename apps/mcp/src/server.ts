@@ -316,7 +316,7 @@ export const createMcpApp = (
   const host = process.env.MCP_SERVER_HOST ?? "127.0.0.1";
   const app = createMcpExpressApp({ host });
 
-  app.post("/mcp", async (req, res) => {
+  app.post("/mcp", async (req: any, res: any) => {
     const server = createMcpServer(deps);
 
     try {
@@ -345,7 +345,7 @@ export const createMcpApp = (
     }
   });
 
-  app.get("/mcp", async (_req, res) => {
+  app.get("/mcp", async (_req: any, res: any) => {
     res.writeHead(405).end(
       JSON.stringify({
         jsonrpc: "2.0",
@@ -358,7 +358,7 @@ export const createMcpApp = (
     );
   });
 
-  app.delete("/mcp", async (_req, res) => {
+  app.delete("/mcp", async (_req: any, res: any) => {
     res.writeHead(405).end(
       JSON.stringify({
         jsonrpc: "2.0",

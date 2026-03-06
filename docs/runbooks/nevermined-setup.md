@@ -32,6 +32,22 @@ back into `.env`.
 
 ## Testing the Paywall
 
+The paid public HTTP surface currently exposed to Nevermined is:
+
+- `POST /sessions`
+- `POST /retrieve`
+
+The MCP transport is exposed separately at `POST /mcp`, with paid tools registered on top of that transport.
+
+The runtime payment flow uses x402 v2 with:
+
+- scheme: `nvm:erc4337`
+- sandbox network: `eip155:84532`
+- live network: `eip155:8453`
+- request header: `payment-signature`
+- challenge header: `payment-required`
+- settlement header: `payment-response`
+
 Call a protected endpoint without a token to see the `payment-required` header:
 
 ```bash
@@ -53,3 +69,11 @@ curl -i http://localhost:3001/retrieve \
 
 Refer to [nevermined-x402-flow.md](./nevermined-x402-flow.md) for the complete
 subscriber flow.
+
+For an automated local verification, run:
+
+```bash
+pnpm --filter @memory/api verify:nevermined
+```
+
+This always verifies the `402` preflight against `POST /retrieve`. If `NVM_SUBSCRIBER_API_KEY` is set, it also attempts a paid retry using a fresh x402 access token.

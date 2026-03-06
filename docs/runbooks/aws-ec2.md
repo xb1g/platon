@@ -1,6 +1,6 @@
 # AWS EC2 Deployment Guide (Single Instance MVP)
 
-This guide covers deploying the Agent Memory Platform to a single AWS EC2 instance. This approach runs the databases (Postgres, Neo4j, Redis) in Docker and the Node.js applications (API, Worker, Web) via PM2.
+This guide covers deploying the Agent Memory Platform to a single AWS EC2 instance. This approach runs the databases (Postgres, Neo4j, Redis) in Docker and the Node.js applications (API, MCP, Worker, Web) via PM2.
 
 ## 1. Launch the EC2 Instance
 
@@ -13,7 +13,7 @@ This guide covers deploying the Agent Memory Platform to a single AWS EC2 instan
 7. **Network Settings:**
    - Allow SSH traffic from your IP.
    - Allow HTTP traffic from the internet (Port 80).
-   - Allow Custom TCP traffic on Port 3000 (Web Dashboard) and Port 3001 (API) if you want direct access before setting up a reverse proxy.
+   - Allow Custom TCP traffic on Port 3000 (Web Dashboard), Port 3001 (API), and Port 3002 (MCP) if you want direct access before setting up a reverse proxy.
 8. **Storage:** Increase the root volume to **30 GB** (gp3).
 9. Click **Launch Instance**.
 
@@ -137,6 +137,12 @@ server {
         proxy_set_header Connection 'upgrade';
         proxy_set_header Host $host;
         proxy_cache_bypass $http_upgrade;
+    }
+
+    location /mcp {
+        proxy_pass http://localhost:3002/mcp;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
     }
 }
 ```

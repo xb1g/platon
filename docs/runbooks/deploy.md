@@ -13,5 +13,6 @@
 5. Run `pnpm build`
 6. Start services:
    - API: `pnpm --filter @memory/api start`
+   - MCP: `pnpm --filter @memory/mcp start`
    - Worker: `pnpm --filter @memory/worker start`
    - Web: `pnpm --filter @memory/web start`

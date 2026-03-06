@@ -57,7 +57,7 @@ describe("authPlugin", () => {
         agentRequestId: "request-123",
         authContext: verifiedAuthContext,
         credits: 1n,
-        paymentRequired: {},
+        paymentRequired: {} as any,
         token: "token-123"
       };
     });
@@ -95,7 +95,7 @@ describe("authPlugin", () => {
         agentRequestId: "request-123",
         authContext: verifiedAuthContext,
         credits: 1n,
-        paymentRequired: {},
+        paymentRequired: {} as any,
         token: "token-123"
       };
     });
