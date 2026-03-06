@@ -4,7 +4,7 @@ Developer-facing memory infrastructure for AI agent businesses. Agents dump sess
 
 ## Current Scope
 
-The platform now includes the first paid API path for x402-protected memory ingestion and retrieval. The MCP server, worker, and dashboard still have follow-on tasks, but the API package can already advertise payment requirements, verify Nevermined access, and expose verified request identity to downstream handlers.
+The platform now includes paid x402 access for both the HTTP API and the HTTP MCP server. The MCP package uses native Nevermined paywall protection for memory tools, and forwards paid calls to the API through a trusted internal hop that avoids double settlement.
 
 ## Workspace Layout
 
@@ -39,6 +39,7 @@ Environment configuration is centralized in `.env.example`. Populate the followi
 | `NEO4J_URI`, `NEO4J_USER`, `NEO4J_PASSWORD` | Graph metadata store credentials |
 | `REDIS_URL` | BullMQ queue connection |
 | `MCP_SERVER_HOST`, `MCP_SERVER_PORT` | Host and port for the MCP bridge |
+| `PLATON_INTERNAL_AUTH_TOKEN` | Shared secret used by the paid MCP server when forwarding verified calls to the API without double-charging |
 | `NVM_API_KEY`, `NVM_ENVIRONMENT` | Nevermined API key and target environment |
 | `NVM_PLAN_ID`, `NVM_AGENT_ID` | Runtime plan and agent identifiers used in x402 headers |
 | `BUILDER_ADDRESS` | Wallet address that receives plan revenue during registration |

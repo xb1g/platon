@@ -185,4 +185,35 @@ describe("paywallPlugin", () => {
 
     await app.close();
   });
+
+  it("verifies internal MCP requests but skips settlement when internal auth is trusted", async () => {
+    process.env.PLATON_INTERNAL_AUTH_TOKEN = "internal-secret";
+    const { app, redeemCreditsFromRequest, startProcessingRequest } = await buildApp();
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/retrieve",
+      headers: {
+        "payment-signature": "token-123",
+        "x-platon-internal-auth": "internal-secret"
+      },
+      payload: {
+        agentId: "agent-1",
+        agentKind: "support-agent",
+        query: "redis failure",
+        limit: 5,
+        filters: {
+          statuses: [],
+          toolNames: []
+        }
+      }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(startProcessingRequest).toHaveBeenCalledOnce();
+    expect(redeemCreditsFromRequest).not.toHaveBeenCalled();
+
+    await app.close();
+    delete process.env.PLATON_INTERNAL_AUTH_TOKEN;
+  });
 });

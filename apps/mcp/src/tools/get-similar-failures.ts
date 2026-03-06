@@ -4,6 +4,20 @@ export const getSimilarFailures = async (
   args: Record<string, unknown>,
   context: ToolContext
 ): Promise<ToolResult> => {
+  if (!context.accessToken) {
+    return {
+      content: [{ type: "text", text: "Payment Required: missing Bearer token on MCP transport" }],
+      isError: true,
+    };
+  }
+
+  if (!context.internalAuthToken) {
+    return {
+      content: [{ type: "text", text: "Server misconfiguration: missing PLATON_INTERNAL_AUTH_TOKEN" }],
+      isError: true,
+    };
+  }
+
   const payload = {
     agentId: context.agentId,
     agentKind: context.agentKind,
@@ -18,12 +32,9 @@ export const getSimilarFailures = async (
   try {
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
-      "x-platon-subscriber-id": context.subscriberId,
+      "payment-signature": context.accessToken,
+      "x-platon-internal-auth": context.internalAuthToken,
     };
-
-    if (context.paymentToken) {
-      headers["payment-signature"] = context.paymentToken;
-    }
 
     const response = await fetch(`${context.apiBaseUrl}/retrieve`, {
       method: "POST",

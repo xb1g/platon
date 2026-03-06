@@ -6,22 +6,24 @@ Add persistent memory to your AI agents in minutes.
 
 ## Quick Start
 
-### Option 1: MCP Server (Recommended)
+### Option 1: Paid HTTP MCP Server
 
-Add Platon to your agent's MCP configuration:
+Run the MCP server and connect to its HTTP endpoint:
 
-```json
-{
-  "mcpServers": {
-    "platon": {
-      "command": "npx",
-      "args": ["-y", "@platon/mcp-server"],
-      "env": {
-        "PLATON_API_KEY": "your-api-key"
-      }
-    }
-  }
-}
+```bash
+pnpm --filter @memory/mcp dev
+```
+
+Endpoint:
+
+```text
+http://localhost:3000/mcp
+```
+
+Paid MCP calls use a Nevermined x402 token in the HTTP transport header:
+
+```http
+Authorization: Bearer <x402-access-token>
 ```
 
 Your agent now has access to three tools:
@@ -35,11 +37,11 @@ Your agent now has access to three tools:
 ### Option 2: REST API
 
 ```bash
-curl -X POST https://api.platon.dev/sessions \
-  -H "Authorization: Bearer $PLATON_API_KEY" \
+curl -X POST https://platon.bigf.me/api/sessions \
+  -H "payment-signature: $X402_ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
-    "tenantId": "your-tenant",
+    "agentKind": "code-assistant",
     "agentId": "my-agent",
     "sessionId": "sess-001",
     "task": { "kind": "code-review", "summary": "Review PR #42" },
@@ -95,7 +97,7 @@ Dump a session for reflection and storage.
 **Response:** `201 Created`
 
 ```json
-{ "id": "sess-xxx", "status": "queued", "tenantId": "your-tenant" }
+{ "id": "sess-xxx", "status": "queued", "agentId": "my-agent", "agentKind": "code-assistant" }
 ```
 
 ### POST /retrieve
@@ -139,7 +141,7 @@ Query the memory graph for relevant context.
 
 ### memory.dump_session
 
-Persist a completed session for reflection. Use the same structured payload as the HTTP API.
+Persist a completed session for reflection. Use the same structured payload as the HTTP API. Payment is attached to the MCP transport via `Authorization: Bearer <token>`, not inside tool arguments.
 
 ```json
 {
@@ -180,8 +182,12 @@ Find past failures similar to a current error.
 
 | Variable | Description |
 |----------|-------------|
-| `PLATON_API_KEY` | Your API key (required) |
-| `PLATON_API_URL` | API base URL (default: `https://api.platon.dev`) |
+| `NVM_API_KEY` | Nevermined API key used by the paid MCP server |
+| `NVM_ENVIRONMENT` | `sandbox` or `live` |
+| `NVM_AGENT_ID` | Nevermined agent ID for MCP monetization |
+| `NVM_PLAN_ID` | Nevermined plan ID for subscribers |
+| `PLATON_INTERNAL_AUTH_TOKEN` | Internal shared secret for MCP-to-API forwarding without double settlement |
+| `MEMORY_API_URL` | Backing Platon API base URL (default: `http://localhost:3001`) |
 
 ---
 
@@ -198,4 +204,4 @@ pnpm install && pnpm dev     # Start all services
 Services:
 - **API** — `http://localhost:3000`
 - **Web Dashboard** — `http://localhost:3001`
-- **MCP Server** — stdio transport (configure in your agent)
+- **MCP Server** — `http://localhost:3000/mcp`

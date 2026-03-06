@@ -54,6 +54,7 @@ export type PaymentContext = {
   authContext?: PaymentAuthContext;
   credits: bigint;
   paymentRequired: unknown;
+  skipSettlement?: boolean;
   token: string;
 };
 
@@ -79,6 +80,23 @@ const getToken = (request: FastifyRequest) => {
     return value[0];
   }
   return value;
+};
+
+const getInternalAuthHeader = (request: FastifyRequest) => {
+  const value = request.headers["x-platon-internal-auth"];
+  if (Array.isArray(value)) {
+    return value[0];
+  }
+  return value;
+};
+
+const isTrustedInternalRequest = (request: FastifyRequest) => {
+  const expected = process.env.PLATON_INTERNAL_AUTH_TOKEN;
+  if (!expected) {
+    return false;
+  }
+
+  return getInternalAuthHeader(request) === expected;
 };
 
 const encodeHeaderValue = (value: unknown) =>
@@ -202,6 +220,7 @@ export const paywallPlugin = fp<PaywallPluginOptions>(async (server, options: Pa
         authContext: deriveAuthContext(requestInfo, config),
         credits: routeConfig.credits,
         paymentRequired,
+        skipSettlement: isTrustedInternalRequest(request),
         token
       };
     } catch {
@@ -210,7 +229,7 @@ export const paywallPlugin = fp<PaywallPluginOptions>(async (server, options: Pa
   });
 
   server.addHook("onSend", async (request, reply, payload) => {
-    if (!request.paymentContext || reply.statusCode >= 400) {
+    if (!request.paymentContext || request.paymentContext.skipSettlement || reply.statusCode >= 400) {
       return payload;
     }
 

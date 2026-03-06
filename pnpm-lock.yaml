@@ -72,6 +72,9 @@ importers:
       '@modelcontextprotocol/sdk':
         specifier: ^1.15.0
         version: 1.27.1(zod@3.25.76)
+      '@nevermined-io/payments':
+        specifier: 1.0.0-rc14
+        version: 1.0.0-rc14(openai@5.23.2(zod@3.25.76))
       dotenv:
         specifier: ^16.4.7
         version: 16.6.1

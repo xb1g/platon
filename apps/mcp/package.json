@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@memory/shared": "workspace:*",
+    "@nevermined-io/payments": "1.0.0-rc14",
     "@modelcontextprotocol/sdk": "^1.15.0",
     "dotenv": "^16.4.7",
     "zod": "^3.24.1"
