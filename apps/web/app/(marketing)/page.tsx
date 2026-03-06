@@ -2,7 +2,14 @@
 
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { Zap, ArrowRight, ChevronRight, Sparkles, Copy, Check } from "lucide-react";
+import {
+  Zap,
+  ArrowRight,
+  ChevronRight,
+  Sparkles,
+  Copy,
+  Check,
+} from "lucide-react";
 import { useState } from "react";
 import {
   AGENT_INSTALLATION_PATH,
@@ -16,7 +23,7 @@ if (typeof window !== "undefined") {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "X-Debug-Session-Id": "dc9466"
+      "X-Debug-Session-Id": "dc9466",
     },
     body: JSON.stringify({
       sessionId: "dc9466",
@@ -25,8 +32,8 @@ if (typeof window !== "undefined") {
       location: "apps/web/app/(marketing)/page.tsx:module",
       message: "marketing page module evaluated",
       data: {},
-      timestamp: Date.now()
-    })
+      timestamp: Date.now(),
+    }),
   }).catch(() => {});
 }
 // #endregion
@@ -174,7 +181,8 @@ function CodeSnippet() {
         background: "rgba(255,255,255,0.03)",
         backdropFilter: "blur(24px)",
         border: "1px solid rgba(255,255,255,0.08)",
-        boxShadow: "0 8px 32px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)",
+        boxShadow:
+          "0 8px 32px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)",
       }}
     >
       {/* Header bar */}
@@ -311,7 +319,10 @@ function AgentInstructionsHighlighted() {
   return (
     <code>
       {lines.map((line, index) => (
-        <span key={`${line}-${index}`} className={`block ${lineClassName(line)}`}>
+        <span
+          key={`${line}-${index}`}
+          className={`block ${lineClassName(line)}`}
+        >
           {line ? renderInline(line) : " "}
         </span>
       ))}
@@ -336,7 +347,7 @@ export default function LandingPage() {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-Debug-Session-Id": "dc9466"
+        "X-Debug-Session-Id": "dc9466",
       },
       body: JSON.stringify({
         sessionId: "dc9466",
@@ -345,8 +356,8 @@ export default function LandingPage() {
         location: "apps/web/app/(marketing)/page.tsx:LandingPage",
         message: "LandingPage rendered",
         data: {},
-        timestamp: Date.now()
-      })
+        timestamp: Date.now(),
+      }),
     }).catch(() => {});
   }
   // #endregion
@@ -382,7 +393,7 @@ export default function LandingPage() {
           </div>
 
           {/* Right CTA */}
-            <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3">
             <Link
               href="/spec"
               className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-white/10 text-sm text-white/65 hover:text-white hover:border-white/30 transition-all"
@@ -513,8 +524,8 @@ export default function LandingPage() {
               transition={{ duration: 0.6, delay: 0.7 }}
               className="text-base md:text-lg text-white/50 max-w-md mb-10 leading-relaxed"
             >
-              Platon works hand in hand with your AI agents to turn memory into a
-              real engine — not a pile of disconnected context windows.
+              Platon works hand in hand with your AI agents to turn memory into
+              a real engine — not a pile of disconnected context windows.
             </motion.p>
 
             {/* CTAs */}
@@ -524,20 +535,14 @@ export default function LandingPage() {
               transition={{ duration: 0.5, delay: 1 }}
               className="flex items-center gap-8"
             >
-              <Link
-                href="/dashboard"
-                className="group inline-flex flex-col"
-              >
+              <Link href="/dashboard" className="group inline-flex flex-col">
                 <span className="flex items-center gap-2 text-sm font-medium text-white tracking-wide">
                   Get started
                   <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                 </span>
                 <span className="h-px w-full bg-white/30 mt-2 group-hover:bg-accent-violet transition-colors" />
               </Link>
-              <Link
-                href="/spec"
-                className="group inline-flex flex-col"
-              >
+              <Link href="/spec" className="group inline-flex flex-col">
                 <span className="flex items-center gap-2 text-sm font-medium text-white/70 tracking-wide group-hover:text-white">
                   Read the spec
                   <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
@@ -579,23 +584,92 @@ export default function LandingPage() {
       </section>
 
       {/* ═══ FEATURES SPLIT ═══ */}
-      <section
-        id="products"
-        className="relative px-6 md:px-10 py-24 md:py-32"
-      >
+      <section id="products" className="relative px-6 md:px-10 py-24 md:py-32">
         <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16 lg:gap-24">
           {/* Left — geometric art + headline */}
           <div className="relative min-h-[500px] lg:min-h-[700px]">
             {/* Floating blocks */}
-            <FloatingBlock w={100} h={130} x="10%" y="5%" color="rgba(139,92,246,0.12)" delay={0} duration={6} />
-            <FloatingBlock w={70} h={90} x="45%" y="0%" color="rgba(139,92,246,0.08)" delay={0.5} duration={7} />
-            <FloatingBlock w={55} h={70} x="70%" y="12%" color="rgba(139,92,246,0.1)" delay={1} duration={5.5} />
-            <FloatingBlock w={80} h={100} x="5%" y="30%" color="rgba(139,92,246,0.06)" delay={1.5} duration={8} />
-            <FloatingBlock w={60} h={80} x="55%" y="25%" color="rgba(139,92,246,0.09)" delay={0.8} duration={6.5} />
-            <FloatingBlock w={90} h={60} x="25%" y="50%" color="rgba(139,92,246,0.07)" delay={1.2} duration={7.5} />
-            <FloatingBlock w={50} h={65} x="65%" y="45%" color="rgba(139,92,246,0.11)" delay={0.3} duration={5} />
-            <FloatingBlock w={110} h={80} x="15%" y="65%" color="rgba(139,92,246,0.05)" delay={2} duration={9} />
-            <FloatingBlock w={40} h={55} x="50%" y="60%" color="rgba(139,92,246,0.08)" delay={1.8} duration={6} />
+            <FloatingBlock
+              w={100}
+              h={130}
+              x="10%"
+              y="5%"
+              color="rgba(139,92,246,0.12)"
+              delay={0}
+              duration={6}
+            />
+            <FloatingBlock
+              w={70}
+              h={90}
+              x="45%"
+              y="0%"
+              color="rgba(139,92,246,0.08)"
+              delay={0.5}
+              duration={7}
+            />
+            <FloatingBlock
+              w={55}
+              h={70}
+              x="70%"
+              y="12%"
+              color="rgba(139,92,246,0.1)"
+              delay={1}
+              duration={5.5}
+            />
+            <FloatingBlock
+              w={80}
+              h={100}
+              x="5%"
+              y="30%"
+              color="rgba(139,92,246,0.06)"
+              delay={1.5}
+              duration={8}
+            />
+            <FloatingBlock
+              w={60}
+              h={80}
+              x="55%"
+              y="25%"
+              color="rgba(139,92,246,0.09)"
+              delay={0.8}
+              duration={6.5}
+            />
+            <FloatingBlock
+              w={90}
+              h={60}
+              x="25%"
+              y="50%"
+              color="rgba(139,92,246,0.07)"
+              delay={1.2}
+              duration={7.5}
+            />
+            <FloatingBlock
+              w={50}
+              h={65}
+              x="65%"
+              y="45%"
+              color="rgba(139,92,246,0.11)"
+              delay={0.3}
+              duration={5}
+            />
+            <FloatingBlock
+              w={110}
+              h={80}
+              x="15%"
+              y="65%"
+              color="rgba(139,92,246,0.05)"
+              delay={2}
+              duration={9}
+            />
+            <FloatingBlock
+              w={40}
+              h={55}
+              x="50%"
+              y="60%"
+              color="rgba(139,92,246,0.08)"
+              delay={1.8}
+              duration={6}
+            />
 
             {/* Headline */}
             <motion.div
@@ -660,10 +734,7 @@ export default function LandingPage() {
       </section>
 
       {/* ═══ HOW IT WORKS ═══ */}
-      <section
-        id="research"
-        className="relative px-6 md:px-10 py-24 md:py-32"
-      >
+      <section id="research" className="relative px-6 md:px-10 py-24 md:py-32">
         <div className="max-w-4xl mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 16 }}
