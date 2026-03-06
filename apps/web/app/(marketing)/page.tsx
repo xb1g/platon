@@ -4,6 +4,11 @@ import { motion } from "framer-motion";
 import Link from "next/link";
 import { Zap, ArrowRight, ChevronRight, Sparkles, Copy, Check } from "lucide-react";
 import { useState } from "react";
+import {
+  AGENT_INSTALLATION_PATH,
+  AGENT_INSTALLATION_URL,
+  agentOperatorPrompt,
+} from "@/lib/agent-installation";
 
 // #region agent log
 if (typeof window !== "undefined") {
@@ -148,36 +153,7 @@ function Stat({
 }
 
 /* ─── Code snippet panel ─── */
-const agentInstructions = `You have access to Platon, an agent memory system via MCP. Use these three tools to build persistent memory across sessions.
-
-── BEFORE EVERY TASK ──
-
-1. Call memory.retrieve_context
-   - Pass your agentKind, agentId, and a natural-language query describing the task you're about to do
-   - Optional: set limit (default 5, max 20)
-   - You'll receive learnings, success patterns, and session insights ranked by confidence (0-1)
-   - Apply high-confidence results to inform your approach
-
-2. If the task involves an area where you've seen errors before, also call memory.get_similar_failures
-   - Pass your agentKind, agentId, and the error message or description
-   - You'll receive past failures with resolution summaries
-   - Use these resolutions to avoid repeating known mistakes
-
-── AFTER EVERY TASK ──
-
-3. Call memory.dump_session with:
-   - agentKind: your agent type (e.g. "code-reviewer")
-   - agentId: your unique identifier (e.g. "reviewer-prod-01")
-   - sessionId: a unique ID for this session
-   - task: { kind: "...", summary: "..." }
-   - outcome: { status: "success" | "failed" | "partial", summary: "..." }
-   - tools: [{ name: "...", category: "..." }] (optional — tools you used)
-   - events: [{ type: "...", summary: "..." }] (optional — notable events)
-   - errors: [{ message: "...", code: "...", retryable: true/false }] (optional)
-   - artifacts: [{ kind: "...", uri: "..." }] (optional — files/outputs created)
-   - humanFeedback: { rating: 1-5, summary: "..." } (optional)
-
-Always dump sessions, even for failed tasks — failures are the most valuable learnings.`;
+const agentInstructions = agentOperatorPrompt;
 
 function CodeSnippet() {
   const [copied, setCopied] = useState(false);
@@ -213,31 +189,44 @@ function CodeSnippet() {
 
           {/* File label */}
           <span className="px-3 py-1 rounded-md text-xs font-mono bg-white/8 text-white/90 ml-2">
-            agent-instructions.md
+            agent-installation.md
           </span>
         </div>
 
-        {/* Copy button */}
-        <button
-          onClick={handleCopy}
-          className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-white/40 hover:text-white/70 hover:bg-white/5 transition-all"
-        >
-          {copied ? (
-            <>
-              <Check className="w-3.5 h-3.5 text-accent-emerald" />
-              <span className="text-[10px] text-accent-emerald">Copied</span>
-            </>
-          ) : (
-            <>
-              <Copy className="w-3.5 h-3.5" />
-              <span className="text-[10px]">Copy</span>
-            </>
-          )}
-        </button>
+        <div className="flex items-center gap-2">
+          <Link
+            href={AGENT_INSTALLATION_PATH}
+            target="_blank"
+            className="px-2.5 py-1 rounded-md text-[10px] font-medium text-white/55 hover:text-white/80 hover:bg-white/5 transition-all"
+          >
+            Open hosted .md
+          </Link>
+          <button
+            onClick={handleCopy}
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-white/40 hover:text-white/70 hover:bg-white/5 transition-all"
+          >
+            {copied ? (
+              <>
+                <Check className="w-3.5 h-3.5 text-accent-emerald" />
+                <span className="text-[10px] text-accent-emerald">Copied</span>
+              </>
+            ) : (
+              <>
+                <Copy className="w-3.5 h-3.5" />
+                <span className="text-[10px]">Copy</span>
+              </>
+            )}
+          </button>
+        </div>
       </div>
 
       {/* Code content */}
       <div className="p-5 overflow-auto max-h-[420px]">
+        <div className="mb-4 rounded-xl border border-white/6 bg-white/[0.02] px-3 py-2 text-[11px] leading-relaxed text-white/55">
+          Paste this into your agent, or tell the agent to read{" "}
+          <span className="text-accent-emerald">{AGENT_INSTALLATION_URL}</span>{" "}
+          and install Platon directly.
+        </div>
         <pre className="text-[13px] leading-relaxed font-mono">
           <AgentInstructionsHighlighted />
         </pre>
@@ -247,142 +236,85 @@ function CodeSnippet() {
 }
 
 function AgentInstructionsHighlighted() {
+  const lines = agentInstructions.split("\n");
+
+  const renderInline = (line: string) => {
+    const parts = line.split(/(https:\/\/\S+|`[^`]+`)/g);
+
+    return parts.map((part, index) => {
+      if (!part) {
+        return null;
+      }
+
+      if (part === AGENT_INSTALLATION_URL) {
+        return (
+          <span key={`${part}-${index}`} className="text-accent-emerald">
+            {part}
+          </span>
+        );
+      }
+
+      if (part.startsWith("`") && part.endsWith("`")) {
+        const token = part.slice(1, -1);
+
+        if (token.startsWith("memory.")) {
+          return (
+            <span key={`${token}-${index}`} className="text-accent-emerald">
+              {part}
+            </span>
+          );
+        }
+
+        if (["agentKind", "agentId", "sessionId"].includes(token)) {
+          return (
+            <span key={`${token}-${index}`} className="text-accent-sky">
+              {part}
+            </span>
+          );
+        }
+
+        return (
+          <span key={`${token}-${index}`} className="text-accent-amber">
+            {part}
+          </span>
+        );
+      }
+
+      return <span key={`${part}-${index}`}>{part}</span>;
+    });
+  };
+
+  const lineClassName = (line: string) => {
+    if (!line.trim()) {
+      return "";
+    }
+
+    if (line.startsWith("Install Platon memory")) {
+      return "text-white/90 font-semibold";
+    }
+
+    if (/^\d+\./.test(line.trim())) {
+      return "text-white/82";
+    }
+
+    if (line.trim().startsWith("-")) {
+      return "text-white/55";
+    }
+
+    if (line.startsWith("Use this for any autonomous agent")) {
+      return "text-accent-violet";
+    }
+
+    return "text-white/68";
+  };
+
   return (
     <code>
-      <span className="text-white/60">You have access to Platon, an agent memory system via MCP.</span>{"\n"}
-      <span className="text-white/60">Use these three tools to build persistent memory across sessions.</span>{"\n"}
-      {"\n"}
-      <span className="text-accent-violet font-bold">── BEFORE EVERY TASK ──</span>{"\n"}
-      {"\n"}
-      <span className="text-white/60">1. Call </span>
-      <span className="text-accent-emerald">memory.retrieve_context</span>{"\n"}
-      <span className="text-white/60">   - Pass your </span>
-      <span className="text-accent-sky">agentKind</span>
-      <span className="text-white/60">, </span>
-      <span className="text-accent-sky">agentId</span>
-      <span className="text-white/60">, and a natural-language </span>
-      <span className="text-accent-sky">query</span>{"\n"}
-      <span className="text-white/60">     describing the task you&apos;re about to do</span>{"\n"}
-      <span className="text-white/60">   - Optional: set </span>
-      <span className="text-accent-sky">limit</span>
-      <span className="text-white/60"> (default 5, max 20)</span>{"\n"}
-      <span className="text-white/60">   - You&apos;ll receive learnings, success patterns, and</span>{"\n"}
-      <span className="text-white/60">     session insights ranked by confidence (0-1)</span>{"\n"}
-      <span className="text-white/60">   - Apply high-confidence results to inform your approach</span>{"\n"}
-      {"\n"}
-      <span className="text-white/60">2. If the task involves an area where you&apos;ve seen errors</span>{"\n"}
-      <span className="text-white/60">   before, also call </span>
-      <span className="text-accent-emerald">memory.get_similar_failures</span>{"\n"}
-      <span className="text-white/60">   - Pass your </span>
-      <span className="text-accent-sky">agentKind</span>
-      <span className="text-white/60">, </span>
-      <span className="text-accent-sky">agentId</span>
-      <span className="text-white/60">, and the error message</span>{"\n"}
-      <span className="text-white/60">   - You&apos;ll receive past failures with resolution summaries</span>{"\n"}
-      <span className="text-white/60">   - Use these resolutions to avoid repeating known mistakes</span>{"\n"}
-      {"\n"}
-      <span className="text-accent-violet font-bold">── AFTER EVERY TASK ──</span>{"\n"}
-      {"\n"}
-      <span className="text-white/60">3. Call </span>
-      <span className="text-accent-emerald">memory.dump_session</span>
-      <span className="text-white/60"> with:</span>{"\n"}
-      <span className="text-white/60">   - </span>
-      <span className="text-accent-sky">agentKind</span>
-      <span className="text-white/60">: your agent type (e.g. </span>
-      <span className="text-accent-amber">&quot;code-reviewer&quot;</span>
-      <span className="text-white/60">)</span>{"\n"}
-      <span className="text-white/60">   - </span>
-      <span className="text-accent-sky">agentId</span>
-      <span className="text-white/60">: your unique identifier (e.g. </span>
-      <span className="text-accent-amber">&quot;reviewer-prod-01&quot;</span>
-      <span className="text-white/60">)</span>{"\n"}
-      <span className="text-white/60">   - </span>
-      <span className="text-accent-sky">sessionId</span>
-      <span className="text-white/60">: a unique ID for this session</span>{"\n"}
-      <span className="text-white/60">   - </span>
-      <span className="text-accent-sky">task</span>
-      <span className="text-white/60">{": { "}</span>
-      <span className="text-accent-sky">kind</span>
-      <span className="text-white/60">{": "}</span>
-      <span className="text-accent-amber">&quot;...&quot;</span>
-      <span className="text-white/60">{", "}</span>
-      <span className="text-accent-sky">summary</span>
-      <span className="text-white/60">{": "}</span>
-      <span className="text-accent-amber">&quot;...&quot;</span>
-      <span className="text-white/60">{" }"}</span>{"\n"}
-      <span className="text-white/60">   - </span>
-      <span className="text-accent-sky">outcome</span>
-      <span className="text-white/60">{": { "}</span>
-      <span className="text-accent-sky">status</span>
-      <span className="text-white/60">{": "}</span>
-      <span className="text-accent-amber">&quot;success&quot;</span>
-      <span className="text-white/60"> | </span>
-      <span className="text-accent-amber">&quot;failed&quot;</span>
-      <span className="text-white/60"> | </span>
-      <span className="text-accent-amber">&quot;partial&quot;</span>
-      <span className="text-white/60">{", "}</span>
-      <span className="text-accent-sky">summary</span>
-      <span className="text-white/60">{": "}</span>
-      <span className="text-accent-amber">&quot;...&quot;</span>
-      <span className="text-white/60">{" }"}</span>{"\n"}
-      <span className="text-white/60">   - </span>
-      <span className="text-accent-sky">tools</span>
-      <span className="text-white/60">{": [{ "}</span>
-      <span className="text-accent-sky">name</span>
-      <span className="text-white/60">{": "}</span>
-      <span className="text-accent-amber">&quot;...&quot;</span>
-      <span className="text-white/60">{", "}</span>
-      <span className="text-accent-sky">category</span>
-      <span className="text-white/60">{": "}</span>
-      <span className="text-accent-amber">&quot;...&quot;</span>
-      <span className="text-white/60">{" }] (optional)"}</span>{"\n"}
-      <span className="text-white/60">   - </span>
-      <span className="text-accent-sky">events</span>
-      <span className="text-white/60">{": [{ "}</span>
-      <span className="text-accent-sky">type</span>
-      <span className="text-white/60">{": "}</span>
-      <span className="text-accent-amber">&quot;...&quot;</span>
-      <span className="text-white/60">{", "}</span>
-      <span className="text-accent-sky">summary</span>
-      <span className="text-white/60">{": "}</span>
-      <span className="text-accent-amber">&quot;...&quot;</span>
-      <span className="text-white/60">{" }] (optional)"}</span>{"\n"}
-      <span className="text-white/60">   - </span>
-      <span className="text-accent-sky">errors</span>
-      <span className="text-white/60">{": [{ "}</span>
-      <span className="text-accent-sky">message</span>
-      <span className="text-white/60">{": "}</span>
-      <span className="text-accent-amber">&quot;...&quot;</span>
-      <span className="text-white/60">{", "}</span>
-      <span className="text-accent-sky">code</span>
-      <span className="text-white/60">{": "}</span>
-      <span className="text-accent-amber">&quot;...&quot;</span>
-      <span className="text-white/60">{", "}</span>
-      <span className="text-accent-sky">retryable</span>
-      <span className="text-white/60">{": true/false }] (optional)"}</span>{"\n"}
-      <span className="text-white/60">   - </span>
-      <span className="text-accent-sky">artifacts</span>
-      <span className="text-white/60">{": [{ "}</span>
-      <span className="text-accent-sky">kind</span>
-      <span className="text-white/60">{": "}</span>
-      <span className="text-accent-amber">&quot;...&quot;</span>
-      <span className="text-white/60">{", "}</span>
-      <span className="text-accent-sky">uri</span>
-      <span className="text-white/60">{": "}</span>
-      <span className="text-accent-amber">&quot;...&quot;</span>
-      <span className="text-white/60">{" }] (optional)"}</span>{"\n"}
-      <span className="text-white/60">   - </span>
-      <span className="text-accent-sky">humanFeedback</span>
-      <span className="text-white/60">{": { "}</span>
-      <span className="text-accent-sky">rating</span>
-      <span className="text-white/60">{": 1-5, "}</span>
-      <span className="text-accent-sky">summary</span>
-      <span className="text-white/60">{": "}</span>
-      <span className="text-accent-amber">&quot;...&quot;</span>
-      <span className="text-white/60">{" } (optional)"}</span>{"\n"}
-      {"\n"}
-      <span className="text-white/60">Always dump sessions, even for failed tasks —</span>{"\n"}
-      <span className="text-white/60">failures are the most valuable learnings.</span>
+      {lines.map((line, index) => (
+        <span key={`${line}-${index}`} className={`block ${lineClassName(line)}`}>
+          {line ? renderInline(line) : " "}
+        </span>
+      ))}
     </code>
   );
 }

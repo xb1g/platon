@@ -1,0 +1,240 @@
+export const AGENT_INSTALLATION_BASE_URL = "https://platon.bigf.me";
+export const AGENT_INSTALLATION_PATH = "/agent-installation.md";
+export const AGENT_INSTALLATION_URL = `${AGENT_INSTALLATION_BASE_URL}${AGENT_INSTALLATION_PATH}`;
+export const MCP_ENDPOINT_URL = `${AGENT_INSTALLATION_BASE_URL}/mcp`;
+export const API_BASE_URL = `${AGENT_INSTALLATION_BASE_URL}/api`;
+
+export const agentOperatorPrompt = `Install Platon memory for this agent.
+
+1. Read ${AGENT_INSTALLATION_URL} and follow it exactly.
+2. Keep these identity fields stable across every run:
+   - \`agentKind\`
+   - \`agentId\`
+3. Before each new task, call \`memory.retrieve_context\` with a plain-language summary of the work.
+4. If you are handling an error, risky step, or repeated issue, call \`memory.get_similar_failures\`.
+5. After every task, call \`memory.dump_session\` with the task, outcome, tools, key events, errors, and artifacts.
+6. Always record failed and partial runs. Those are valuable memory.
+7. Do not rename the Platon tool names or identity fields.
+8. If Platon is temporarily unavailable, continue the task and record that outage in the next session dump.
+
+Use this for any autonomous agent: coding, research, browser, support, operations, workflow, or assistant agents.`;
+
+export const agentInstallationMarkdown = `# Platon Agent Installation
+
+This document tells an autonomous agent, or the human operator configuring that agent, how to install and use Platon persistent memory.
+
+## Operator Shortcut
+
+Paste this into your agent:
+
+\`\`\`text
+Install Platon memory for this agent.
+
+1. Read ${AGENT_INSTALLATION_URL} and follow it exactly.
+2. Keep these identity fields stable across every run:
+   - agentKind
+   - agentId
+3. Before each new task, call \`memory.retrieve_context\` with a plain-language summary of the work.
+4. If you are handling an error, risky step, or repeated issue, call \`memory.get_similar_failures\`.
+5. After every task, call \`memory.dump_session\` with the task, outcome, tools, key events, errors, and artifacts.
+6. Always record failed and partial runs. Those are valuable memory.
+7. Do not rename the Platon tool names or identity fields.
+8. If Platon is temporarily unavailable, continue the task and record that outage in the next session dump.
+\`\`\`
+
+## What Platon Does
+
+Platon gives an autonomous agent a persistent operational memory.
+
+- Before work, the agent can retrieve relevant prior context.
+- During debugging or incident work, the agent can retrieve similar past failures.
+- After work, the agent records what happened so future runs can learn from it.
+
+This workflow is useful for coding agents, research agents, browser agents, support agents, workflow agents, autonomous operations agents, and other task-oriented assistants.
+
+## Required Identity Contract
+
+Every agent must keep these fields stable:
+
+- \`agentKind\`: the agent role or class, for example \`"research-agent"\`, \`"ops-agent"\`, or \`"browser-agent"\`
+- \`agentId\`: the stable identifier for the specific deployed agent, for example \`"ops-prod-01"\`
+
+Do not rotate or rename these casually. If you change them, Platon will treat the caller as a different agent with a different memory namespace.
+
+Each task run also needs a fresh \`sessionId\`.
+
+## Installation Options
+
+### Option 1: Remote MCP
+
+If your runtime supports remote MCP, connect it to:
+
+\`\`\`text
+${MCP_ENDPOINT_URL}
+\`\`\`
+
+Platon exposes these tools over MCP:
+
+- \`memory.retrieve_context\`
+- \`memory.get_similar_failures\`
+- \`memory.dump_session\`
+
+If your MCP transport requires payment or auth headers, configure them in the transport layer rather than in tool arguments.
+
+### Option 2: HTTP API
+
+If your runtime does not support MCP, call the Platon HTTP API directly:
+
+\`\`\`text
+${API_BASE_URL}
+\`\`\`
+
+Use:
+
+- \`POST /retrieve\`
+- \`POST /sessions\`
+
+## Required Runtime Behavior
+
+Every agent that uses Platon should follow this loop:
+
+1. Before a task, retrieve context.
+2. If the work includes an error or likely failure mode, retrieve similar failures too.
+3. Complete the task.
+4. Dump the full session result.
+
+This loop matters more than the specific runtime. The same operating pattern applies whether the agent writes code, researches, browses websites, handles tickets, runs workflows, or executes operations tasks.
+
+## Before Every Task
+
+Call \`memory.retrieve_context\` or \`POST /retrieve\` with:
+
+- \`agentKind\`
+- \`agentId\`
+- \`query\`: a plain-language summary of the work about to happen
+- optional \`limit\`
+- optional \`filters\`
+
+Good query examples:
+
+- \`"Review a failing CI pipeline for a Node.js monorepo"\`
+- \`"Research customer churn causes for enterprise accounts"\`
+- \`"Investigate why a browser checkout flow hangs after payment"\`
+- \`"Resolve repeated 401 responses from a partner API"\`
+
+Use the returned context to adjust your plan before acting.
+
+## When You Hit A Risk Or Error
+
+Call \`memory.get_similar_failures\` if:
+
+- you see a concrete error
+- the task is entering a risky migration or deploy step
+- the agent has repeated the same mistake more than once
+
+Pass the error message or a concise description of the failure mode.
+
+Use returned failure summaries as preventive guidance, not as blind truth. Prefer high-confidence, clearly relevant results.
+
+## After Every Task
+
+Call \`memory.dump_session\` or \`POST /sessions\` with a structured session payload.
+
+Minimum fields:
+
+\`\`\`json
+{
+  "agentKind": "browser-agent",
+  "agentId": "checkout-prod-01",
+  "sessionId": "session-2026-03-06-001",
+  "task": {
+    "kind": "checkout-investigation",
+    "summary": "Investigate why payment confirmation hangs in the hosted checkout flow"
+  },
+  "outcome": {
+    "status": "failed",
+    "summary": "Checkout stalled after payment provider redirect because a required callback route was missing"
+  }
+}
+\`\`\`
+
+Recommended optional fields:
+
+- \`tools\`
+- \`events\`
+- \`errors\`
+- \`artifacts\`
+- \`humanFeedback\`
+
+Always dump failed and partial runs. Those are often the most useful memory.
+
+## Minimal API Examples
+
+### Retrieve
+
+\`\`\`bash
+curl -X POST ${API_BASE_URL}/retrieve \\
+  -H "Content-Type: application/json" \\
+  -H "payment-signature: <token>" \\
+  -d '{
+    "agentKind": "research-agent",
+    "agentId": "market-research-prod-01",
+    "query": "Find prior research about B2B churn causes in enterprise accounts",
+    "limit": 5
+  }'
+\`\`\`
+
+### Dump Session
+
+\`\`\`bash
+curl -X POST ${API_BASE_URL}/sessions \\
+  -H "Content-Type: application/json" \\
+  -H "payment-signature: <token>" \\
+  -d '{
+    "agentKind": "research-agent",
+    "agentId": "market-research-prod-01",
+    "sessionId": "session-2026-03-06-002",
+    "task": {
+      "kind": "market-research",
+      "summary": "Summarize the top enterprise churn drivers from customer interviews"
+    },
+    "outcome": {
+      "status": "success",
+      "summary": "Compiled five recurring churn drivers with supporting interview excerpts"
+    },
+    "artifacts": [
+      {
+        "kind": "report",
+        "uri": "/reports/churn-drivers-2026-03-06.md",
+        "summary": "Enterprise churn driver summary"
+      }
+    ]
+  }'
+\`\`\`
+
+## Verification Checklist
+
+An installation is complete only when the agent can:
+
+- retrieve context before a task
+- retrieve similar failures during error handling
+- dump a successful session
+- dump a failed session
+- keep \`agentKind\` and \`agentId\` stable between runs
+
+## Operating Rules
+
+- Do not change tool names.
+- Do not invent replacement field names for the payload.
+- Do not skip session dumps because a task failed.
+- Do not assume retrieved memory is always correct; evaluate relevance and confidence.
+- If Platon is unavailable, continue the task and log the outage in the next available session dump.
+
+## Canonical URL
+
+Use this file as the primary installation reference:
+
+\`\`\`text
+${AGENT_INSTALLATION_URL}
+\`\`\`
+`;

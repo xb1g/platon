@@ -20,6 +20,7 @@ services:
 
   neo4j:
     image: neo4j:5.15.0
+    hostname: neo4j
     environment:
       NEO4J_AUTH: neo4j/password
       NEO4J_PLUGINS: '["apoc"]'
