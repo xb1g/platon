@@ -149,6 +149,8 @@ function Stat({
 
 /* ─── Code snippet panel ─── */
 const agentInstructions = `You have access to Platon, an agent memory system via MCP. Use these three tools to build persistent memory across sessions.
+Install via MCP: npx -y @platon/mcp-server (set PLATON_API_KEY in env)
+Full reference: https://platon.bigf.me/agent-skill
 
 ── BEFORE EVERY TASK ──
 
@@ -251,6 +253,13 @@ function AgentInstructionsHighlighted() {
     <code>
       <span className="text-white/60">You have access to Platon, an agent memory system via MCP.</span>{"\n"}
       <span className="text-white/60">Use these three tools to build persistent memory across sessions.</span>{"\n"}
+      <span className="text-white/60">Install via MCP: </span>
+      <span className="text-accent-emerald">npx -y @platon/mcp-server</span>
+      <span className="text-white/60"> (set </span>
+      <span className="text-accent-sky">PLATON_API_KEY</span>
+      <span className="text-white/60"> in env)</span>{"\n"}
+      <span className="text-white/60">Full reference: </span>
+      <span className="text-accent-sky underline">https://platon.bigf.me/agent-skill</span>{"\n"}
       {"\n"}
       <span className="text-accent-violet font-bold">── BEFORE EVERY TASK ──</span>{"\n"}
       {"\n"}
