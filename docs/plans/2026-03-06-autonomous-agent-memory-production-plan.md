@@ -102,12 +102,12 @@ The executor must respect this order:
 - [x] Task 3: Enrich the shared contracts for memory provenance and governance
 - [x] Task 4: Persist richer graph entities and provenance
 - [x] Task 5: Installation, Delivery, and Execution Masterplan
-- [ ] Task 6: Implement vector indexing, hybrid retrieval, and memory governance
+- [x] Task 6: Implement vector indexing, hybrid retrieval, and memory governance
 - [x] Task 7: Build retrieval explanations and usefulness feedback loops
 - [x] Task 8: Create benchmark tasks and an eval harness
 - [ ] Task 9: Deferred after first release: Build the overnight orchestration scripts
 - [ ] Task 10: Deferred after first release: Add metrics, traces, dashboards, and alert thresholds
-- [ ] Task 11: Harden auth, namespace safety, and poisoning defenses
+- [x] Task 11: Harden auth, namespace safety, and poisoning defenses
 - [ ] Task 12: Deferred after first release: Add replay, dead-letter, and recovery tooling
 - [ ] Task 13: Push, deploy, and post-deploy smoke
 - [ ] Task 14: Deferred after first release: Validate production readiness with load, failure injection, and unattended runs
@@ -723,7 +723,7 @@ git add apps/api/src/lib/metrics.ts apps/worker/src/lib/metrics.ts apps/api/src/
 git commit -m "feat: add observability for autonomous memory"
 ```
 
-### [ ] Task 11: Harden auth, namespace safety, and poisoning defenses
+### [x] Task 11: Harden auth, namespace safety, and poisoning defenses
 
 **Files:**
 - Modify: `apps/api/src/lib/verified-auth.ts`
@@ -767,6 +767,13 @@ Expected: PASS with explicit rejection, redaction, and namespace safety checks.
 git add apps/api/src/lib/verified-auth.ts apps/api/src/routes/sessions.ts apps/api/src/routes/retrieve.ts apps/api/src/lib/security/redact.ts apps/api/src/lib/security/detect-suspicious-memory.ts apps/api/tests/security.test.ts
 git commit -m "feat: harden memory safety and namespace security"
 ```
+
+Execution note (2026-03-06T19:21:00Z):
+- Branch: `codex/release-path`
+- Worktree: `/Users/bunyasit/dev/platon/.worktrees/codex-release-path`
+- Commit: `pending`
+- Verification: `pnpm --filter @memory/api test -- security.test.ts auth.test.ts retrieve.test.ts sessions.test.ts` (pass), `pnpm --filter @memory/api typecheck` (pass)
+- Merge: pending
 
 ### [ ] Task 12: Deferred after first release: Add replay, dead-letter, and recovery tooling
 
@@ -833,7 +840,7 @@ This is the only task allowed to push and deploy automatically. For the first re
 Run:
 
 ```bash
-git push origin HEAD
+git push origin main
 ./scripts/deploy-local.sh
 ```
 

@@ -3,6 +3,8 @@ import { z } from "zod";
 import { sessionPayloadSchema } from "@memory/shared";
 import { enqueueReflectionJob } from "../lib/reflection-queue.js";
 import { ensureSessionTable, insertRawSession, markReflectionQueued } from "../lib/session-store.js";
+import { detectSuspiciousSessionPayload } from "../lib/security/detect-suspicious-memory.js";
+import { isPayloadTooLarge, redactSessionPayload } from "../lib/security/redact.js";
 import { ensureAgentIdentityMatches, getVerifiedAuthContext } from "../lib/verified-auth.js";
 
 export const sessionRoutes: FastifyPluginAsync = async (server) => {
@@ -19,14 +21,29 @@ export const sessionRoutes: FastifyPluginAsync = async (server) => {
         return reply;
       }
 
+      if (isPayloadTooLarge(data)) {
+        return reply.status(413).send({ error: "Payload too large" });
+      }
+
+      const sanitizedPayload = redactSessionPayload(data);
+      const suspiciousDetection = detectSuspiciousSessionPayload(sanitizedPayload);
+
+      if (suspiciousDetection) {
+        return reply.status(422).send({
+          error: "Suspicious payload",
+          status: "quarantined",
+          reason: suspiciousDetection.reason
+        });
+      }
+
       await ensureSessionTable();
 
       const storedSession = await insertRawSession({
         subscriberId: authContext.subscriberId,
         agentKind: authContext.agentKind,
         agentId: authContext.agentId,
-        sessionId: data.sessionId,
-        payload: data
+        sessionId: sanitizedPayload.sessionId,
+        payload: sanitizedPayload
       });
 
       await enqueueReflectionJob({
