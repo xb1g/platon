@@ -21,9 +21,13 @@ type PaymentsClient = {
       httpMethodRequested: string
     ): Promise<{
       agentRequestId: string;
+      agentId?: string;
+      agentKind?: string;
       balance: {
         isSubscriber: boolean;
       };
+      planId?: string;
+      subscriberId?: string;
     }>;
   };
 };
@@ -38,8 +42,16 @@ export type PaywallPluginOptions = {
   protectedRoutes?: Record<string, ProtectedRouteConfig>;
 };
 
-type PaymentContext = {
+export type PaymentAuthContext = {
+  subscriberId: string;
+  agentId: string;
+  agentKind: string;
+  planId: string;
+};
+
+export type PaymentContext = {
   agentRequestId: string;
+  authContext?: PaymentAuthContext;
   credits: bigint;
   paymentRequired: unknown;
   token: string;
@@ -90,6 +102,27 @@ const buildRequestedUrl = (request: FastifyRequest) => {
   const host = request.headers.host ?? "localhost";
   const path = request.url.split("?")[0] ?? request.url;
   return `${request.protocol}://${host}${path}`;
+};
+
+const deriveAuthContext = (
+  requestInfo: {
+    agentId?: string;
+    agentKind?: string;
+    planId?: string;
+    subscriberId?: string;
+  },
+  config: NeverminedConfig
+): PaymentAuthContext | undefined => {
+  if (!requestInfo.subscriberId || !requestInfo.agentKind) {
+    return undefined;
+  }
+
+  return {
+    subscriberId: requestInfo.subscriberId,
+    agentId: requestInfo.agentId ?? config.agentId,
+    agentKind: requestInfo.agentKind,
+    planId: requestInfo.planId ?? config.planId
+  };
 };
 
 const sendPaymentRequired = (
@@ -166,6 +199,7 @@ export const paywallPlugin = fp<PaywallPluginOptions>(async (server, options: Pa
 
       request.paymentContext = {
         agentRequestId: requestInfo.agentRequestId,
+        authContext: deriveAuthContext(requestInfo, config),
         credits: routeConfig.credits,
         paymentRequired,
         token
