@@ -16,7 +16,7 @@ After every run, update this file in place.
 ## Current Verdict
 
 - Purchase and connect: partial
-- Retrieve before work: broken
+- Retrieve before work: partial
 - Similar failures during risk: broken
 - Dump after work: partial
 - Automatic improvement loop: broken
@@ -64,63 +64,58 @@ Known prior signal to verify independently:
 
 ## Latest Findings
 
-1) Finding: `get_similar_failures` does not reliably return failure-only memories
-- User impact: similarity search during risk can return unrelated memories, reducing prevention of repeated failures.
+1) Finding: `memory.get_similar_failures` still returns non-failure memories in hosted production
+- User impact: risk-time retrieval is not trustworthy, so agents can get successful or generic memories when they explicitly ask for past failures.
 - Evidence and reproduction:
-  - MCP tool call sends `filters: { statuses: ["failed"], ... }` in `apps/mcp/src/tools/get-similar-failures.ts`.
-  - API retrieval handler calls `graphSearch`, `vectorSearch`, and `exaSearch` concurrently but passes no filters to `vectorSearch` and always appends all `exaSearch` results.
-  - `vector-search.ts` only accepts `{namespaceId, query, limit}` and `vector-store.ts` search enforces `status = 'published'`.
-  - Fresh local reproduction on fresh namespace: `/sessions` accepted two records (success + failed), but `/retrieve` with `filters: { statuses: ["failed"] }` returned `results:[]` while no local reflection was available (showing no useful failure gating path even in the intended branch).
+  - Fresh hosted `memory.get_similar_failures` call for `OPENAI_API_KEY is required for model-backed reflection` returned three successful or neutral memories, not failure-only results.
+  - Raw hosted MCP `tools/call` for the same method on 2026-03-06 reproduced the same behavior.
+  - Local repo state is better than the prior note suggested: `graphSearch` and `vectorSearch` both receive `filters`, and targeted local suites passed (`pnpm --filter @memory/api test -- tests/vector-search.test.ts tests/retrieve.test.ts tests/paywall.test.ts tests/retrieval-ranking.test.ts`).
 - Root cause:
-  - Filter contract is lost between API endpoint and vector/Exa sources; failed filtering is not consistently applied to every retrieval channel.
+  - The remaining live contamination likely comes from unconditional Exa supplementation in `/retrieve`, or from hosted production lagging behind the current repo. This is an inference from code plus live behavior.
 - Exact file references:
-  - [get-similar-failures.ts](/Users/bunyasit/dev/platon/apps/mcp/src/tools/get-similar-failures.ts):14-22
-  - [retrieve.ts](/Users/bunyasit/dev/platon/apps/api/src/routes/retrieve.ts):36-55,67-70
-  - [vector-search.ts](/Users/bunyasit/dev/platon/apps/api/src/lib/retrieval/vector-search.ts):6-13,85-120
-  - [vector-store.ts](/Users/bunyasit/dev/platon/apps/api/src/lib/retrieval/vector-store.ts):245-269
+  - [retrieve.ts](/Users/bunyasit/dev/platon/apps/api/src/routes/retrieve.ts):36-75
+  - [exa-search.ts](/Users/bunyasit/dev/platon/apps/api/src/lib/retrieval/exa-search.ts):20-66
 
-2) Finding: Reflection pipeline can be permanently unproductive without an OpenAI key, so dumps do not become useful memory
-- User impact: post-task dumping accepts data but future retrieval does not improve because memory is never governed into published learnings.
+2) Finding: Hosted direct HTTP API is not reliably usable with a valid x402 token
+- User impact: non-MCP clients and fallback integrations cannot depend on the documented `POST /retrieve` and `POST /sessions` flow.
 - Evidence and reproduction:
-  - Local fresh namespace run against API `127.0.0.1:3003` with internal auth bypass and two sessions (`success` and `failed`) returned `201` for `/sessions`.
-  - Retrieval immediately after ingest returned `200` with `"results":[]`.
-  - Worker output showed `reflect-session has failed with OPENAI_API_KEY is required for model-backed reflection.`
-  - DB query showed both raw sessions in `raw_sessions` with `reflection_status = failed` and `reflection_error = OPENAI_API_KEY is required for model-backed reflection.`
+  - `GET https://platon.bigf.me/api/nevermined.json` returned `200` with configured hosted plan and agent metadata.
+  - `POST https://platon.bigf.me/api/sessions` with the configured `PLATON_X402_ACCESS_TOKEN` returned `500 Internal Server Error` with `Failed to redeem credits. Failed to redeem credits`.
+  - `POST https://platon.bigf.me/api/retrieve` with the same token returned `502 Bad Gateway` on one attempt and timed out on another bounded retry.
+  - By contrast, hosted MCP `memory.dump_session` succeeded with the same token, so this is not simply an invalid-token case.
 - Root cause:
-  - Reflection depends on LLM model calls and exits early without `OPENAI_API_KEY`, so no published learnings are produced and retrieval remains empty or noisy.
+  - The live failure mode appears to sit in the paid direct-API verify/settle path or an upstream dependency. That is an inference from the 500 body and the paywall hook structure.
 - Exact file references:
-  - [sessions.ts](/Users/bunyasit/dev/platon/apps/api/src/routes/sessions.ts):39-57,58-64
-  - [llm.ts](/Users/bunyasit/dev/platon/apps/worker/src/lib/llm.ts):55-59
-  - [dump-session.ts](/Users/bunyasit/dev/platon/apps/mcp/src/tools/dump-session.ts):34-36,42-53
+  - [paywall.ts](/Users/bunyasit/dev/platon/apps/api/src/plugins/paywall.ts):210-275
 
-3) Finding: MCP transport behavior requires explicit stream-compatible headers and rejects some clients quickly
-- User impact: easy plug-in is fragile for non-MCP-aware clients; a valid JSON payload without correct Accept header can be rejected before auth and tool-level behavior is tested.
+3) Finding: Hosted MCP install guidance overstates the `Mcp-Session-Id` requirement
+- User impact: first-run operators are told to capture and resend `Mcp-Session-Id`, but the hosted initialize response did not emit that header and later calls still succeeded without it.
 - Evidence and reproduction:
-  - `POST https://platon.bigf.me/mcp` without `Accept: application/json, text/event-stream` returns `406 Not Acceptable`.
-  - With correct Accept + `tools/call` and no auth, response is `Authorization required` (tool-level gating).
-  - With bogus bearer token, response is `Payment required. Available plans...`.
+  - Fresh `initialize` to `https://platon.bigf.me/mcp` with a valid bearer token returned `200` and no `Mcp-Session-Id` header on 2026-03-06.
+  - A later hosted `memory.dump_session` call succeeded without sending `Mcp-Session-Id`.
+  - The generated install contract still tells callers to read and reuse that header.
 - Root cause:
-  - Transport contract is strict around StreamableHTTP content-type/accept behavior and not clearly surfaced as a zero-configuration onboarding step.
+  - The server creates StreamableHTTP transport with `sessionIdGenerator: undefined`, which is consistent with a sessionless flow.
 - Exact file references:
-  - [server.ts](/Users/bunyasit/dev/platon/apps/mcp/src/server.ts):327-345
+  - [server.ts](/Users/bunyasit/dev/platon/apps/mcp/src/server.ts):335-345
+  - [agent-installation.ts](/Users/bunyasit/dev/platon/apps/web/lib/agent-installation.ts):215-249
 
-4) Finding: Onboarding requires hidden identity/payment prerequisites beyond the install contract’s narrative
-- User impact: external adoption requires setting up Nevermined keys, stable `agentKind`/`agentId`, and payment/headers correctly; partial docs exist but assumptions are still implicit for first-time operators.
+4) Finding: Automatic improvement still has an undocumented hard dependency on `OPENAI_API_KEY` in self-hosted reflection
+- User impact: a self-hosted operator can satisfy the paid MCP prerequisites and still never generate learnings unless OpenAI model credentials are configured separately.
 - Evidence and reproduction:
-  - Production install contract returns clear plan/token guidance and canonical identity guidance.
-  - Local/server-side MCP startup still requires `NVM_API_KEY` at server initialization (`createPaymentsService`).
-  - MCP tool schemas intentionally do not include `paymentToken`, so credentials must be sent on transport header only.
+  - `OPENAI_API_KEY` is unset in this environment.
+  - Fresh local reproduction on 2026-03-06: `pnpm --filter @memory/worker exec tsx --eval ... llmReflect(...)` exited with `OPENAI_API_KEY is required for model-backed reflection.`
+  - The self-hosted prerequisite section documents `NVM_API_KEY`, `PLATON_INTERNAL_AUTH_TOKEN`, `NVM_ENVIRONMENT`, and `MEMORY_API_URL`, but not `OPENAI_API_KEY`.
 - Root cause:
-  - Missing explicit runtime validation/examples for transport acceptance and required env matrix during first-run onboarding.
+  - Reflection is model-backed and fails closed before any learning is produced when the OpenAI credential is absent.
 - Exact file references:
-  - [server.ts](/Users/bunyasit/dev/platon/apps/mcp/src/server.ts):89-99,101-111,64-83,64-87,327-345
-  - [INTEGRATION.md](/Users/bunyasit/dev/platon/apps/web/docs/INTEGRATION.md):27-31,51-57,174-209
-  - [agent.md](/Users/bunyasit/dev/platon/agent.md):5-15,70-75
+  - [llm.ts](/Users/bunyasit/dev/platon/apps/worker/src/lib/llm.ts):52-59
+  - [agent-installation.ts](/Users/bunyasit/dev/platon/apps/web/lib/agent-installation.ts):130-153
 
 ## Verdict Table
 
 - purchase and connect: partial
-- retrieve before work: broken
+- retrieve before work: partial
 - similar failures during risk: broken
 - dump after work: partial
 - automatic improvement loop: broken
@@ -128,33 +123,40 @@ Known prior signal to verify independently:
 ## Product Assessment
 
 What is good enough to ship now:
-- Paid access and endpoint discovery are mostly defined: install contract exists, Nevermined diagnostics are exposed, and MCP tool schemas are discoverable with stable tool names.
-- Endpoint mechanics for ingestion are present (`POST /sessions`, `POST /retrieve`, MCP equivalents).
+- Hosted MCP onboarding is clearer than before: the install contract now includes stable identity rules, exact token acquisition guidance, and the required `Accept` header for StreamableHTTP.
+- Hosted MCP itself is partially working in live use: `tools/list`, `initialize`, `memory.retrieve_context` (via the configured Codex MCP client), and `memory.dump_session` all succeeded during this run.
+- Local repo coverage around retrieval filters and paywall behavior is reasonably strong: the targeted API and MCP test suites passed.
 
 What should not be claimed yet:
-- "It automatically improves over time" is not yet true in default end-to-end behavior because reflection can stall without complete external model config.
-- "Failed-memory lookup is failure-specific" is not safe to claim yet because status filters are not consistently enforced in all retrieval channels.
+- "Direct HTTP API works as the documented non-MCP fallback" is not safe to claim while `/api/sessions` is returning live 500s and `/api/retrieve` is unstable with a valid token.
+- "Failed-memory lookup is failure-specific" is still not safe to claim, even though local filter wiring has improved, because hosted behavior still returns non-failure memories.
+- "It automatically improves over time" is not safe to claim for self-hosted operators while reflection silently hard-depends on `OPENAI_API_KEY` and that prerequisite is not in the self-hosted startup section.
 
 ## Fix Plan
 
-1) Enforce status+tool filters consistently across all retrieval sources
-- Why it matters: ensures `memory.get_similar_failures` returns the failure corpus you need during incidents, otherwise the loop cannot avoid repeated mistakes.
+1) Stop mixing failure-filtered retrieval with unfiltered supplemental web results
+- Why it matters: `memory.get_similar_failures` cannot help agents avoid repeated mistakes if success or web memories still leak into the result set.
 - Verify after fix:
-  - Send `memory.get_similar_failures` with a known mixed status corpus and confirm only failed learnings are returned.
-  - Unit test `retrieve.ts` to ensure every branch receives/uses filters and Exa is either filtered or labeled clearly.
-  - Regression test against `memory.get_similar_failures` to confirm no successful memories leak into failure mode.
+  - Run a hosted `memory.get_similar_failures` query against a known mixed corpus and confirm all returned memories are failure-scoped.
+  - Add a regression test that covers `filters.statuses = ["failed"]` with Exa enabled and verifies no non-failure result is appended silently.
 
-2) Make reflection failure modes explicit and fail-soft
-- Why it matters: a 200-style intake without eventual learning is misleading for agents expecting continuous memory growth.
+2) Repair the hosted direct API payment flow and add a real paid smoke check
+- Why it matters: the documented non-MCP path is part of the product promise, and it is currently failing with a valid token.
 - Verify after fix:
-  - Without `OPENAI_API_KEY`, `/sessions` returns actionable ingest status, and `retrieve_context` explicitly indicates degraded mode.
-  - With valid key, successful reflection writes published learnings and `/sessions`/`/retrieve` transitions from empty results to usable results.
+  - Paid `POST /api/retrieve` and `POST /api/sessions` succeed against production with the same token that already works through hosted MCP.
+  - Extend the existing Nevermined smoke coverage so production-like paid retries catch redemption regressions before release.
 
-3) Improve onboarding/connection clarity for non-MCP-savvy clients
-- Why it matters: zero-friction install is a core requirement; hidden transport/env requirements block first-run adoption.
+3) Align MCP docs with actual transport behavior
+- Why it matters: telling operators to depend on `Mcp-Session-Id` when the server behaves sessionlessly adds avoidable confusion to first-run setup.
 - Verify after fix:
-  - Fresh external operator can complete install from `agent-installation.md` only (no repo reads) and make first `initialize`, `retrieve_context`, and `dump_session` calls end-to-end.
-  - Verify Accept/header requirements and exact auth header behavior are documented and mirrored by client snippets.
+  - Either emit and require `Mcp-Session-Id` consistently, or remove that requirement from the contract and examples.
+  - Re-run the hosted curl examples from `agent-installation.md` exactly as published.
+
+4) Make reflection prerequisites explicit and fail-soft
+- Why it matters: session ingestion without eventual learning is misleading for operators expecting automatic improvement.
+- Verify after fix:
+  - Self-hosted setup docs mention `OPENAI_API_KEY` wherever model-backed reflection is required.
+  - Without the key, the product surfaces degraded-learning status clearly instead of implying normal memory growth.
 
 ## Run Ledger
 
@@ -181,3 +183,33 @@ What should not be claimed yet:
   - Thread filters into all retrieval sources and gate/label Exa contributions for filtered failure queries.
   - Add explicit degradation messaging for failed reflection and a local-ops fallback path (or clearly document strict requirements).
   - Expand install contract with runnable transport profile and quick-connect checks for header/env prerequisites.
+
+## Run 2026-03-06 15:37 PST
+
+- Summary: Re-ran the evaluation with fresh hosted production checks, targeted local tests, and a direct worker reflection reproduction.
+- Purchase and connect: partial
+- Retrieve before work: partial
+- Similar failures during risk: broken
+- Dump after work: partial
+- Automatic improvement loop: broken
+- Key evidence:
+  - `codex mcp get platon` shows hosted StreamableHTTP MCP configured at `https://platon.bigf.me/mcp` via `PLATON_X402_ACCESS_TOKEN`.
+  - `curl -si https://platon.bigf.me/mcp ... tools/list` without the required `Accept` header returned `406`, and the same call with `Accept: application/json, text/event-stream` returned the three memory tools.
+  - Hosted `initialize` with the configured bearer token returned `200`, but no `Mcp-Session-Id` header was emitted.
+  - Hosted `memory.dump_session` over MCP succeeded and ingested session `eval-2026-03-06-2335`.
+  - Hosted `memory.get_similar_failures` for `OPENAI_API_KEY is required for model-backed reflection` returned successful or neutral memories instead of failure-only results.
+  - Hosted direct HTTP `GET /api/nevermined.json` returned `200`, but paid `POST /api/sessions` returned `500 Failed to redeem credits. Failed to redeem credits`, and paid `POST /api/retrieve` was unstable (`502` once, timeout on bounded retry).
+  - Fresh local targeted verification passed:
+    - `pnpm --filter @memory/api test -- tests/vector-search.test.ts tests/retrieve.test.ts tests/paywall.test.ts tests/retrieval-ranking.test.ts`
+    - `pnpm --filter @memory/mcp test -- tests/server.test.ts`
+  - Fresh local worker reproduction with `OPENAI_API_KEY` unset failed immediately:
+    - `pnpm --filter @memory/worker exec tsx --eval ... llmReflect(...)`
+    - error: `OPENAI_API_KEY is required for model-backed reflection.`
+- What changed since the prior run:
+  - The old repo-local finding that vector retrieval ignored filters is stale; current code and tests show filter threading into graph and vector paths.
+  - The live product is still failing the user-facing goal, but the most important fresh blockers are now direct-API payment instability, failure-query contamination, MCP doc mismatch around session headers, and undocumented reflection prerequisites.
+- Recommended next fixes:
+  - Filter or partition Exa contributions when callers ask for failure-only retrieval.
+  - Repair paid direct API redemption and add a real paid smoke check that exercises `/api/retrieve` and `/api/sessions`.
+  - Align the install contract with the actual session model of the hosted MCP transport.
+  - Document `OPENAI_API_KEY` as a reflection prerequisite and surface degraded-learning mode explicitly.

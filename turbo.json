@@ -1,5 +1,21 @@
 {
   "$schema": "https://turbo.build/schema.json",
+  "globalEnv": [
+    "PLATON_INTERNAL_AUTH_TOKEN",
+    "PLATON_ALLOW_INTERNAL_AUTH_BYPASS",
+    "NVM_API_KEY",
+    "NVM_ENVIRONMENT",
+    "NVM_PLAN_ID",
+    "NVM_AGENT_ID",
+    "MEMORY_API_URL",
+    "MCP_SERVER_HOST",
+    "MCP_SERVER_PORT",
+    "DATABASE_URL",
+    "REDIS_URL",
+    "NEO4J_URI",
+    "NEO4J_USER",
+    "NEO4J_PASSWORD"
+  ],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],

@@ -1,8 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { fileURLToPath } from "node:url";
 
 import {
   createMcpApp,
   listMemoryTools,
+  loadWorkspaceEnv,
   registerMemoryTools,
 } from "../src/server.js";
 
@@ -67,6 +69,8 @@ describe("MCP Server", () => {
   });
 
   it("fails app startup when internal auth token is missing", () => {
+    vi.stubEnv("PLATON_INTERNAL_AUTH_TOKEN", "");
+
     expect(() =>
       createMcpApp({
         paymentsMcp: {
@@ -75,6 +79,14 @@ describe("MCP Server", () => {
         },
       })
     ).toThrow(/PLATON_INTERNAL_AUTH_TOKEN/);
+  });
+
+  it("loads MCP env from the workspace root env file path", () => {
+    delete process.env.PLATON_INTERNAL_AUTH_TOKEN;
+
+    loadWorkspaceEnv(fileURLToPath(new URL("./fixtures/workspace.env", import.meta.url)));
+
+    expect(process.env.PLATON_INTERNAL_AUTH_TOKEN).toBe("test-internal-token");
   });
 
   it("forwards dump_session calls to the API with internal auth header and token-derived payment signature", async () => {

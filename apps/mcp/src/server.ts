@@ -1,3 +1,4 @@
+import dotenv from "dotenv";
 import { fileURLToPath } from "node:url";
 import { Payments } from "@nevermined-io/payments";
 import { createMcpExpressApp } from "@modelcontextprotocol/sdk/server/express.js";
@@ -45,6 +46,12 @@ type PaymentsMcpLike = {
     ) => void;
   };
 };
+
+export function loadWorkspaceEnv(envPath = fileURLToPath(new URL("../../../.env", import.meta.url))) {
+  dotenv.config({ path: envPath });
+}
+
+loadWorkspaceEnv();
 
 export type MemoryMcpServerDeps = {
   apiBaseUrl?: string;
